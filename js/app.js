@@ -27,7 +27,7 @@
     /* returns true only if the data was really written (demo mode writes nothing and counts as fine) */
     save: function () {
       app._cfg = null;
-      if (app._stale) { // another tab changed the data while we were busy: never silently overwrite it
+      if (app._stale && app.S.mode === 'real') { // another tab changed the data while we were busy: never silently overwrite it
         UI.toast('Your data changed in another tab, so this tab can\u2019t save. Reload this page to continue.', 9000);
         return false;
       }
@@ -54,6 +54,7 @@
       app.S.onboarded = true; app.ui.tab = 'home'; app.commit();
     },
     startReal: function () {
+      app._stale = false;
       // never silently replace data that exists on disk (e.g. saved in another tab, or unreadable)
       if (FD.store.hasData() && !root.confirm('This browser already has saved Money Map data. Starting over will replace it. Continue?')) return;
       app.S = FD.store.defaultState(); app.S.mode = 'real'; app._cfg = null;
@@ -61,9 +62,10 @@
       app.save(); app.render(true);
     },
     startDemo: function () {
+      app._stale = false;
       app.S = FD.sample.build(app.now()); app._cfg = null; app.ui.tab = 'home'; app.render(true);
     },
-    wipe: function () { FD.store.clear(); app.S = FD.store.defaultState(); app._cfg = null; app.ui.tab = 'home'; app.render(true); },
+    wipe: function () { app._stale = false; FD.store.clear(); app.S = FD.store.defaultState(); app._cfg = null; app.ui.tab = 'home'; app.render(true); },
     exportData: function () {
       var blob = new Blob([JSON.stringify(app.S, null, 2)], { type: 'application/json' });
       var url = root.URL.createObjectURL(blob);
@@ -147,10 +149,13 @@
       (doc.activeElement && /^(INPUT|SELECT|TEXTAREA)$/.test(doc.activeElement.tagName));
     if (busy) { app._stale = true; UI.toast('Your saved data changed in another tab. Reload this page to see it \u2014 saving here is paused so nothing is overwritten.', 9000); return; } // don't wipe what you're typing
     var fresh = FD.store.load();
+    app._stale = false; // we are about to be (or already are) in sync with what's on disk
     if (JSON.stringify(fresh) === JSON.stringify(app.S)) return;
     app.S = fresh; app._cfg = null;
     app.render(); UI.toast('Updated \u2014 your data changed in another tab.');
   });
+
+  if (app.S.mode === 'real' && FD.store.wasMigrated()) FD.store.save(app.S); // keep the one-time migration from drifting day to day
 
   FD.app = app;
   function boot() { app.render(); }

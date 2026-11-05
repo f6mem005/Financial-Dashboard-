@@ -54,7 +54,8 @@
   /* ---------- strings ---------- */
   function cleanStr(v, max) {
     // Strip control chars; cap length. Output is only ever rendered via textContent.
-    return String(v == null ? '' : v).replace(/[\u0000-\u001f\u007f-\u009f\u00ad\u061c\u115f\u1160\u034f\u17b4\u17b5\u180e\u200b\u200e\u200f\u2028-\u202e\u2060-\u206f\u2800\u3164\ufe00-\ufe0d\ufeff\uffa0\u{E0000}-\u{E007F}]/gu, ' ').trim().slice(0, max || 80);
+    var out = String(v == null ? '' : v).replace(/[\u0000-\u001f\u007f-\u009f\u00ad\u061c\u115f\u1160\u034f\u17b4\u17b5\u180e\u200b\u200e\u200f\u2028-\u202e\u2060-\u206f\u2800\u3164\ufe00-\ufe0d\ufeff\uffa0\u{E0000}-\u{E007F}]/gu, ' ').trim().slice(0, max || 80);
+    return /^[\u200c\u200d\ufe0e\ufe0f\s]*$/.test(out) ? '' : out; // only joiners/whitespace left = empty
   }
   var idCounter = 0;
   function uid(prefix) {

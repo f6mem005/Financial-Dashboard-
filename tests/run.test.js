@@ -361,3 +361,26 @@ test('r5: clearBackups removes only the backup copies', () => {
   assert.ok(!FD.store.hasBackups()); assert.equal(store.get('fd.v1'), '{"v":1}');
   delete globalThis.localStorage;
 });
+
+/* ---------- final-round regression tests ---------- */
+test('r6: indicator columns need exact names and exact values (Account Type / Credit Card cannot flip signs)', () => {
+  const t = FD.csv.toTransactions(FD.csv.parse('Date,Description,Amount,Account Type\n11/01/2026,COFFEE,-5.00,Credit Card\n11/02/2026,RENT,-100.00,Credit\n'), { dateFormat: 'mdy' });
+  assert.ok(t.txns.every((x) => x.type === 'expense'), 'account-type text flipped a sign');
+  const v = FD.csv.toTransactions(FD.csv.parse('Date,Description,Amount,Type\n11/01/2026,A,-5.00,Credit Card Payment\n11/02/2026,B,5.00,Draft\n'), { dateFormat: 'mdy' });
+  assert.equal(v.txns[0].type, 'expense'); assert.equal(v.txns[1].type, 'income');
+  const both = FD.csv.toTransactions(FD.csv.parse('Date,Description,Debit/Credit,Debit,Credit\n11/01/2026,x,x,5.00,\n11/02/2026,y,x,,9.00\n'), { dateFormat: 'mdy' });
+  assert.equal(both.txns.length, 2); assert.equal(both.txns[0].type, 'expense'); assert.equal(both.txns[1].type, 'income');
+});
+test('r6: invisible-only text counts as empty so fallback names apply; emoji text still survives', () => {
+  assert.equal(U.cleanStr('‍‍‍'), ''); assert.equal(U.cleanStr(' ‌ '), '');
+  assert.equal(U.cleanStr('❤️'), '❤️');
+  const s = FD.store.sanitize({ mode: 'real', subs: [{ id: 's1', name: '‍‍', amount: 5 }] });
+  assert.equal(s.subs[0].name, 'Subscription');
+});
+test('r6: yearly cost guard also works in the forecast day-0 balance', () => {
+  const dec1 = new Date(2026, 11, 1);
+  const { s, cfg } = mk({ payFreq: 'monthly', pay: { amount: 100, nextPayday: '2026-12-28' }, variable: [], annual: [{ id: 'carreg', amount: 600, month: 12 }] }, 2000);
+  assert.equal(E.forecast(cfg, s, dec1, { days: 2 }).points[0].balance, 1400);
+  s.transactions.push(tx({ date: '2026-12-01', amount: 600, category: 'carins' }));
+  assert.equal(E.forecast(cfg, s, dec1, { days: 2 }).points[0].balance, 1400); // balance already dropped to 1400 by the logged payment; not charged again
+});

@@ -483,7 +483,8 @@
       UI.btn('Save', function () {
         if (bal !== null) app.setBalance(bal, true);
         if (minv !== null) S.settings.minBalance = minv;
-        if (app.commit()) UI.toast('Saved');
+        var od = E.overdueBills(app.cfg(), S, app.now()).length;
+        if (app.commit()) UI.toast(od ? 'Saved. ' + od + ' bill' + (od === 1 ? '' : 's') + ' still show as unpaid \u2014 tap \u201cAlready paid\u201d on Home if your new balance already includes ' + (od === 1 ? 'it' : 'them') + '.' : 'Saved', od ? 8000 : 3500);
       }, 'primary'),
       h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: S.settings.showAll, onchange: function (e) { S.settings.showAll = e.target.checked; app.commit(); } }), ' Show every tool, even ones my answers didn’t need')
     )));

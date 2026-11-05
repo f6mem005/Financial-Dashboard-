@@ -39,11 +39,21 @@
   }
 
   function findCol(header, names, exclude) {
-    for (var i = 0; i < header.length; i++) {
-      var h = header[i].toLowerCase().trim();
+    var i, j, h;
+    for (i = 0; i < header.length; i++) { // exact header names win over looser substring matches
+      h = header[i].toLowerCase().trim();
       if (exclude && exclude.test(h)) continue;
-      for (var j = 0; j < names.length; j++) if (h === names[j] || h.indexOf(names[j]) >= 0) return i;
+      for (j = 0; j < names.length; j++) if (h === names[j]) return i;
     }
+    for (i = 0; i < header.length; i++) {
+      h = header[i].toLowerCase().trim();
+      if (exclude && exclude.test(h)) continue;
+      for (j = 0; j < names.length; j++) if (h.indexOf(names[j]) >= 0) return i;
+    }
+    return -1;
+  }
+  function findExact(header, names) {
+    for (var i = 0; i < header.length; i++) if (names.indexOf(header[i].toLowerCase().trim()) >= 0) return i;
     return -1;
   }
 
@@ -112,7 +122,7 @@
     var cDebit = findCol(header, ['debit', 'withdrawal']);
     var cCredit = findCol(header, ['credit', 'deposit']);
     if (cDebit >= 0 && cDebit === cCredit) { if (cAmt < 0) cAmt = cDebit; cDebit = -1; cCredit = -1; } // one signed 'Debit/Credit' column
-    var cInd = cAmt >= 0 ? findCol(header, ['debit/credit', 'dr/cr', 'transaction type', 'type'], /date|category/) : -1;
+    var cInd = cAmt >= 0 ? findExact(header, ['debit/credit', 'credit/debit', 'dr/cr', 'cr/dr', 'transaction type', 'type']) : -1;
     if (cInd === cAmt) cInd = -1;
     if (cDate < 0 || (cAmt < 0 && cDebit < 0 && cCredit < 0)) {
       throw new Error('Couldn’t find a Date column and an Amount column. Check the first row of your file has headers.');
@@ -128,8 +138,8 @@
       if (cAmt >= 0) {
         amt = parseAmount(r[cAmt]);
         var ind = cInd >= 0 ? String(r[cInd] || '').trim().toLowerCase() : '';
-        if (amt !== null && /^(dr|debit|withdrawal)/.test(ind)) amt = -Math.abs(amt);       // an explicit indicator column wins
-        else if (amt !== null && /^(cr|credit|deposit)/.test(ind)) amt = Math.abs(amt);
+        if (amt !== null && /^(dr|debit|withdrawal)s?$/.test(ind)) amt = -Math.abs(amt);       // an explicit indicator column wins
+        else if (amt !== null && /^(cr|credit|deposit)s?$/.test(ind)) amt = Math.abs(amt);
         else if (amt !== null && opts.spendingPositive) amt = -amt;
       } else {
         var dr = parseAmount(r[cDebit]), cr = parseAmount(r[cCredit]);

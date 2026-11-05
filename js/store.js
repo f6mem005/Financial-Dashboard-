@@ -87,7 +87,7 @@
       s.settings.openingBalance = U.num(raw.settings.openingBalance, 0, -1e8, 1e8);
       s.settings.balanceSet = !!raw.settings.balanceSet;
       s.settings.balanceDate = U.parseISO(raw.settings.balanceDate) ? raw.settings.balanceDate : null;
-      if (s.settings.balanceSet && !s.settings.balanceDate) s.settings.balanceDate = U.iso(U.today()); // data saved before balanceDate existed
+      if (s.settings.balanceSet && !s.settings.balanceDate) { s.settings.balanceDate = U.iso(U.today()); migrated = true; } // data saved before balanceDate existed
       s.settings.minBalance = U.num(raw.settings.minBalance, 0, 0, 1e7);
       s.settings.includeGoals = raw.settings.includeGoals !== false;
       s.settings.showAll = !!raw.settings.showAll;
@@ -108,7 +108,7 @@
     return s;
   }
 
-  var lastLoadError = false, backupKept = false;
+  var lastLoadError = false, backupKept = false, migrated = false;
   function keepBackup(raw) {
     try {
       var ls = root.localStorage, cut = raw.slice(0, 8e6);
@@ -138,6 +138,7 @@
   function hasData() { try { return !!root.localStorage.getItem(KEY); } catch (e) { return false; } }
   function loadFailed() { return lastLoadError; }
   function backupOk() { return backupKept; }
+  function wasMigrated() { var m = migrated; migrated = false; return m; }
   function hasBackups() { try { return root.localStorage.getItem(BAK1) !== null || root.localStorage.getItem(BAK2) !== null; } catch (e) { return false; } }
   function clearBackups() { try { root.localStorage.removeItem(BAK1); root.localStorage.removeItem(BAK2); } catch (e) { /* ignore */ } backupKept = false; }
   /* returns true on success; demo data is never written to disk */
@@ -151,6 +152,6 @@
   }
 
   FD.store = { KEY: KEY, defaultState: defaultState, sanitize: sanitize, sanitizeAnswers: sanitizeAnswers, sanitizeTxn: sanitizeTxn,
-    load: load, save: save, clear: clear, hasData: hasData, loadFailed: loadFailed, backupOk: backupOk, hasBackups: hasBackups, clearBackups: clearBackups, MAX_TXNS: MAX_TXNS };
+    load: load, save: save, clear: clear, hasData: hasData, loadFailed: loadFailed, backupOk: backupOk, hasBackups: hasBackups, clearBackups: clearBackups, wasMigrated: wasMigrated, MAX_TXNS: MAX_TXNS };
   if (typeof module !== 'undefined' && module.exports) module.exports = FD;
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -42,6 +42,7 @@ Serve over `http://` (the Content-Security-Policy meta tag is written for `'self
 - **Subscriptions** are itemised manually; no automatic recurring-charge detection from CSV.
 - **CSV import:** generic header detection (date / description / amount or debit+credit), keyword auto-categorising, duplicate skip by date+amount+note. No per-bank presets, no rules editor.
 - **No notifications.** "Alerts" show in-app only; the check-in cadence answer is stored but does not schedule anything.
+- **Yearly costs** due today are skipped if an expense of about the same amount (any category) is already logged today, so an unrelated same-size payment can hide one on that single day.
 - **Several tabs:** if another tab changes your data while this one has unsaved typing, this tab stops saving and asks you to reload (it never overwrites the other tab's data).
 - **Storage:** plain `localStorage` (not encrypted); JSON export but no JSON import/restore; no multi-device sync.
 - **Single checking balance**, no multiple accounts, no transfers, no currency options (USD formatting).
