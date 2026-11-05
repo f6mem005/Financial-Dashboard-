@@ -1,4 +1,4 @@
-# Money Map
+# Finance Sense
 
 A simple personal finance dashboard for young adults (18–30) with little budgeting experience.
 Static, dependency-free, no build step, no account, no network calls. Data stays in the browser (`localStorage`).
@@ -12,7 +12,7 @@ Serve over `http://` (the Content-Security-Policy meta tag is written for `'self
 
 ## Hosting (security)
 
-- Host on **its own origin** (own subdomain / Netlify or Pages site), not under a shared path like `user.github.io/money-map/`:
+- Host on **its own origin** (own subdomain / Netlify or Pages site), not under a shared path like `user.github.io/finance-sense/`:
   `localStorage` is per-origin, so any other app on the same origin could read the saved data.
 - A `<meta>` CSP can't set `frame-ancestors`. Production headers are in `_headers` (Netlify / Cloudflare Pages format);
   other hosts need the same headers. The app also hides itself when it detects it is framed (defence in depth only; `frame-ancestors` is the real control).

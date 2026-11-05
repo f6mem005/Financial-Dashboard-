@@ -55,7 +55,7 @@
     },
     startReal: function () {
       // never silently replace data that exists on disk (e.g. saved in another tab, or unreadable)
-      if (FD.store.hasData() && !root.confirm('This browser already has saved Money Map data. Starting over will replace it. Continue?')) return;
+      if (FD.store.hasData() && !root.confirm('This browser already has saved Finance Sense data. Starting over will replace it. Continue?')) return;
       app._stale = false; // only after the confirm above: cancelling must not mark an out-of-date tab as current
       app.S = FD.store.defaultState(); app.S.mode = 'real'; app._cfg = null;
       app.ui.step = 0; app.ui.editing = null; app.ui.tab = 'home'; app.ui.whatIf = { cut: Object.create(null), extraSavings: 0 };
@@ -69,7 +69,7 @@
     exportData: function () {
       var blob = new Blob([JSON.stringify(app.S, null, 2)], { type: 'application/json' });
       var url = root.URL.createObjectURL(blob);
-      var a = doc.createElement('a'); a.href = url; a.download = 'money-map-backup-' + U.iso(app.now()) + '.json';
+      var a = doc.createElement('a'); a.href = url; a.download = 'finance-sense-backup-' + U.iso(app.now()) + '.json';
       doc.body.appendChild(a); a.click(); a.remove();
       setTimeout(function () { root.URL.revokeObjectURL(url); }, 1000);
     },
@@ -109,7 +109,7 @@
   };
 
   function disclaimer() {
-    return h('footer', { class: 'disclaimer' }, 'Money Map is for education and organizing, not financial advice. It doesn’t recommend specific investments or products. Forecasts are estimates based on what you enter.');
+    return h('footer', { class: 'disclaimer' }, 'Finance Sense is for education and organizing, not financial advice. It doesn’t recommend specific investments or products. Forecasts are estimates based on what you enter.');
   }
 
   function welcome() {
@@ -138,7 +138,7 @@
     var nav = h('nav', { class: 'tabs', 'aria-label': 'Main' }, TABS.map(function (t) {
       return h('button', { type: 'button', class: 'tab' + (app.ui.tab === t[0] ? ' on' : ''), 'aria-current': app.ui.tab === t[0] ? 'page' : null, onclick: function () { app.go(t[0]); } }, icon(t[2]), h('span', null, t[1]));
     }));
-    return h('div', { class: 'shell' }, banner, h('header', { class: 'topbar' }, h('span', { class: 'brand' }, 'Money Map')), content, disclaimer(), nav);
+    return h('div', { class: 'shell' }, banner, h('header', { class: 'topbar' }, h('span', { class: 'brand' }, 'Finance Sense')), content, disclaimer(), nav);
   }
 
   // Another tab changed the data: reload it instead of overwriting it on our next save.
