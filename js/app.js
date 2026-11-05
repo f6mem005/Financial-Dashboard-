@@ -54,9 +54,9 @@
       app.S.onboarded = true; app.ui.tab = 'home'; app.commit();
     },
     startReal: function () {
-      app._stale = false;
       // never silently replace data that exists on disk (e.g. saved in another tab, or unreadable)
       if (FD.store.hasData() && !root.confirm('This browser already has saved Money Map data. Starting over will replace it. Continue?')) return;
+      app._stale = false; // only after the confirm above: cancelling must not mark an out-of-date tab as current
       app.S = FD.store.defaultState(); app.S.mode = 'real'; app._cfg = null;
       app.ui.step = 0; app.ui.editing = null; app.ui.tab = 'home'; app.ui.whatIf = { cut: Object.create(null), extraSavings: 0 };
       app.save(); app.render(true);
