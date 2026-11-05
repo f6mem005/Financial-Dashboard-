@@ -177,6 +177,8 @@ test('review: logged-average spending ignores a rent entry, counts unbudgeted ca
   assert.equal(E.variableMonthly(cfg, s, NOW).usingLogged, false); // only 3 days of everyday spending
   assert.equal(E.variableMonthly(cfg, s, NOW).rows[0].monthly, 300);
   s.transactions.push(tx({ date: '2026-10-01', amount: 30, category: 'groceries' }), tx({ date: '2026-10-10', amount: 300, category: 'other' }));
+  assert.equal(E.variableMonthly(cfg, s, NOW).usingLogged, false); // still too sparse: 4 purchases, not enough coverage
+  for (let i = 0; i < 12; i++) s.transactions.push(tx({ date: U.iso(U.addDays(new Date(2026, 9, 6), i * 2)), amount: 20, category: 'groceries' }));
   const vm = E.variableMonthly(cfg, s, NOW);
   assert.ok(vm.usingLogged && vm.rows.some((r) => r.id === 'unbudgeted' && r.monthly > 100));
 });
@@ -202,4 +204,90 @@ test('review: CSV amounts are parsed strictly', () => {
 test('review: h() refuses disallowed tags and attributes; bidi controls are stripped', () => {
   assert.equal(U.cleanStr('a\u202Eb\u200Bc'), 'a b c');
   const dom = require('node:vm'); void dom; // h() needs a DOM; covered by the browser flow test
+});
+
+/* ---------- round-2 security regression tests ---------- */
+test('r2: parseAmount is linear on hostile cells (no ReDoS) and bounded', () => {
+  const t0 = Date.now();
+  assert.equal(FD.csv.parseAmount(')'.repeat(200000) + 'x'), null);
+  assert.equal(FD.csv.parseAmount('-'.repeat(200000)), null);
+  assert.equal(FD.csv.parseAmount('('.repeat(100000) + '5'), null);
+  assert.ok(Date.now() - t0 < 200, 'took ' + (Date.now() - t0) + 'ms');
+  assert.equal(FD.csv.parseAmount('(5)'), -5); assert.equal(FD.csv.parseAmount('5-'), -5);
+});
+test('r2: dotted thousands read as thousands; plain decimals unaffected', () => {
+  const P = FD.csv.parseAmount;
+  assert.equal(P('1.234'), 1234); assert.equal(P('1.234.567'), 1234567); assert.equal(P('0.125'), 0.125); assert.equal(P('12.50'), 12.5); assert.equal(P('1,234.50'), 1234.5);
+});
+test('r2: ids that name Object.prototype members are rejected', () => {
+  ['__defineGetter__', '__lookupSetter__', 'toLocaleString', 'isPrototypeOf', 'propertyIsEnumerable', '__x', 'constructor'].forEach((id) => {
+    const s = FD.store.sanitize({ mode: 'real', transactions: [{ id, date: '2026-11-03', amount: 5, goalId: id }] });
+    assert.notEqual(s.transactions[0].id, id); assert.equal(s.transactions[0].goalId, undefined);
+  });
+});
+test('r2: duplicate transaction ids are made unique; newer-schema data is not silently down-converted', () => {
+  const s = FD.store.sanitize({ mode: 'real', transactions: [{ id: 'a', date: '2026-11-03', amount: 5 }, { id: 'a', date: '2026-11-04', amount: 6 }] });
+  assert.notEqual(s.transactions[0].id, s.transactions[1].id);
+  const store = new Map(); globalThis.localStorage = { getItem: (k) => (store.has(k) ? store.get(k) : null), setItem: (k, v) => store.set(k, String(v)), removeItem: (k) => store.delete(k) };
+  store.set('fd.v1', JSON.stringify({ v: 2, mode: 'real', onboarded: true }));
+  const loaded = FD.store.load();
+  assert.ok(FD.store.loadFailed() && FD.store.backupOk()); assert.equal(loaded.onboarded, false);
+  assert.equal(store.get('fd.v1.bak'), store.get('fd.v1')); // original preserved
+  store.set('fd.v1', '{second corrupt'); FD.store.load();
+  assert.equal(store.get('fd.v1.bak2'), '{second corrupt'); assert.match(store.get('fd.v1.bak'), /"v":2/); // first copy survives, newest kept too
+  FD.store.clear(); assert.equal(FD.store.loadFailed(), false); assert.equal(store.size, 0);
+  delete globalThis.localStorage;
+});
+test('r2: invisible and bidi characters are stripped', () => {
+  assert.equal(U.cleanStr('a؜b­cㅤd\u{E0041}e'), 'a b c d e');
+});
+
+/* ---------- round-2 code review regression tests ---------- */
+test('r3: one old purchase does not discard your estimates', () => {
+  const { s, cfg } = mk({ payFreq: 'monthly', variable: [{ id: 'groceries', monthly: 300 }, { id: 'dining', monthly: 200 }] }, 0);
+  s.transactions.push(tx({ date: '2026-09-20', amount: 12, category: 'groceries' }));
+  const vm = E.variableMonthly(cfg, s, NOW);
+  assert.equal(vm.usingLogged, false); assert.equal(vm.rows[0].monthly, 300); assert.equal(vm.rows[1].monthly, 200);
+});
+test('r3: marking a custom bill paid is not counted as everyday spending, and can be undone', () => {
+  const { s, cfg } = mk({ payFreq: 'monthly', pay: { amount: 100, nextPayday: '2026-11-25' }, variable: [{ id: 'groceries', monthly: 300 }], bills: [{ id: 'x1abc', name: 'Hobby', amount: 1500, due: 2 }] }, 3000);
+  const bill = cfg.bills[0];
+  const pay = tx({ date: '2026-11-05', amount: 1500, category: 'billpay', billId: 'x1abc', note: 'Hobby (marked paid)' });
+  assert.equal(pay.category, 'billpay'); assert.equal(pay.billId, 'x1abc');
+  s.transactions.push(pay);
+  assert.ok(E.billPaid(s, bill, NOW, NOW));
+  for (let i = 0; i < 12; i++) s.transactions.push(tx({ date: U.iso(U.addDays(new Date(2026, 9, 6), i * 2)), amount: 20, category: 'groceries' }));
+  const vm = E.variableMonthly(cfg, s, NOW);
+  assert.ok(!vm.rows.some((r) => r.id === 'unbudgeted'), 'bill payment leaked into other spending');
+  s.transactions = s.transactions.filter((t) => t.billId !== 'x1abc');           // what the Undo button does
+  assert.equal(E.billPaid(s, bill, NOW, NOW), false);
+});
+test('r3: future-dated payments do not mark a bill paid', () => {
+  const { s, cfg } = mk({ payFreq: 'monthly', pay: { amount: 1, nextPayday: '2026-12-28' }, bills: [{ id: 'rent', amount: 1000, due: 20 }], variable: [] }, 5000);
+  s.transactions.push(tx({ date: '2026-11-20', amount: 1000, category: 'rent' }));
+  assert.equal(E.billPaid(s, cfg.bills[0], NOW, NOW), false);
+});
+test('r3: bills due before you entered your balance are assumed paid; later overdue ones are due now', () => {
+  const now = new Date(2026, 10, 20);
+  const { s, cfg } = mk({ payFreq: 'monthly', pay: { amount: 100, nextPayday: '2026-11-30' }, bills: [{ id: 'rent', amount: 900, due: 1 }, { id: 'phone', amount: 60, due: 10 }] }, 2000);
+  s.settings.balanceSet = true; s.settings.balanceDate = '2026-11-05';
+  assert.ok(E.billPaid(s, cfg.bills[0], now, now));          // rent (1st) is before Nov 5: already in the balance
+  assert.equal(E.billPaid(s, cfg.bills[1], now, now), false); // phone (10th) is after: genuinely unpaid and overdue
+  assert.deepEqual(E.overdueBills(cfg, s, now).map((b) => b.id), ['phone']);
+  assert.equal(E.safeToSpend(cfg, s, now).committed, 60);
+});
+test('r3: an explicit $0 slow month is respected; plain + and Debit/Credit headers parse correctly', () => {
+  const cfg = FD.config.buildConfig({ payFreq: 'varies', pay: { low: 0, high: 2000 } }, {}, NOW);
+  assert.equal(cfg.payLow, 0); assert.equal(cfg.payHigh, 2000); assert.equal(cfg.baseMonthly, 0);
+  assert.equal(FD.csv.parseAmount('+1,200.00'), 1200);
+  const r = FD.csv.toTransactions(FD.csv.parse('Date,Description,Debit Amount,Credit Amount\n11/01/2026,LANDLORD RENT,900.00,\n11/02/2026,ACME PAYROLL,,1500.00\n'), { dateFormat: 'mdy' });
+  assert.equal(r.txns.length, 2); assert.equal(r.txns[0].type, 'expense'); assert.equal(r.txns[0].amount, 900); assert.equal(r.txns[1].type, 'income');
+  assert.equal(FD.csv.categorize('GEICO AUTO'), 'carins'); assert.equal(FD.csv.categorize('NAVIENT STUDENT LOAN'), 'debt');
+});
+test('r3: new goal stays neutral for 30 days even after a first contribution; past-due flagged', () => {
+  const { s, cfg } = mk({ payFreq: 'monthly', goals: [{ id: 'g1', type: 'trip', target: 1200, date: '2027-07-05', created: '2026-11-05' }] }, 0);
+  s.transactions.push(tx({ date: '2026-11-05', amount: 50, category: 'savings', goalId: 'g1' }));
+  assert.equal(E.goalStatus(cfg.goals[0], s, NOW).status, 'new');
+  const late = mk({ payFreq: 'monthly', goals: [{ id: 'g2', type: 'trip', target: 1200, date: '2026-01-01', created: '2025-10-01' }] }, 0);
+  const st = E.goalStatus(late.cfg.goals[0], late.s, NOW); assert.ok(st.pastDue && st.status === 'behind');
 });

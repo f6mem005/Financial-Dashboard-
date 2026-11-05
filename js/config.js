@@ -32,10 +32,14 @@
     var pay = answers.pay || {};
     var amount = 0, low = 0, high = 0;
     if (irregular) {
+      var blank = function (v) { return v === null || v === undefined || v === ''; };
+      var lowGiven = !blank(pay.low), highGiven = !blank(pay.high);
       low = U.num(pay.low, 0, 0, 1e6); high = U.num(pay.high, 0, 0, 1e6);
-      if (low <= 0 && high <= 0) { low = 1000; high = 1800; assumed.push('Income of $1,000 (slow month) to $1,800 (good month)'); }
-      else if (high <= 0) { high = low; assumed.push('No good-month income given, so we used your slow-month number for both'); }
-      else if (low <= 0) { low = high; assumed.push('No slow-month income given, so we used your good-month number for both'); }
+      if (lowGiven && highGiven) { if (low <= 0 && high <= 0) { low = 0; high = 0; } }   // an explicit 0 is a real answer
+      else if (lowGiven) { high = low; if (low > 0) assumed.push('No good-month income given, so we used your slow-month number for both'); }
+      else if (highGiven) { low = high; if (high > 0) assumed.push('No slow-month income given, so we used your good-month number for both'); }
+      if (!lowGiven && !highGiven) { low = 0; high = 0; }
+      if (low <= 0 && high <= 0 && !(lowGiven && highGiven)) { low = 1000; high = 1800; assumed.push('Income of $1,000 (slow month) to $1,800 (good month)'); }
       if (high < low) { var t = high; high = low; low = t; }
     } else {
       amount = U.num(pay.amount, 0, 0, 1e6);

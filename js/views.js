@@ -104,6 +104,16 @@
     var ms = E.monthSummary(cfg, S, now);
     var paid = ms.bills.filter(function (b) { return b.paid; }), open = ms.bills.filter(function (b) { return !b.paid; }).sort(function (a, b) { return a.due - b.due; });
     var left = open.reduce(function (s, b) { return s + b.bill.amount; }, 0);
+    function paidRow(b) {
+      var key = b.bill.id + ':' + U.monthKey(now);
+      var undoable = S.billsPaid[key] || S.transactions.some(function (t) { return t.billId === b.bill.id && t.date.slice(0, 7) === U.monthKey(now); });
+      var undo = undoable ? UI.btn('Undo', function () {
+        delete S.billsPaid[key];
+        S.transactions = S.transactions.filter(function (t) { return !(t.billId === b.bill.id && t.date.slice(0, 7) === U.monthKey(now)); });
+        app.commit();
+      }, 'small', { 'aria-label': 'Undo paid for ' + b.bill.name }) : null;
+      return h('li', null, h('span', { class: 'bill-name' }, '\u2713 ' + b.bill.name), h('span', { class: 'bill-amt' }, money(b.bill.amount)), undo);
+    }
     var body = ms.bills.length ? [
       h('p', { class: 'summary-line' }, paid.length + ' of ' + ms.bills.length + ' paid · ' + money(left) + ' still to pay'),
       CH.bar(ms.bills.length ? paid.length / ms.bills.length : 0, '', 'Bills paid this month'),
@@ -114,13 +124,18 @@
           h('span', { class: 'bill-amt' }, money(b.bill.amount)),
           UI.btn('Mark paid', function () {
             // paying a bill moves real money, so record it as an expense (keeps balance and safe-to-spend honest)
-            S.transactions.push({ id: U.uid('t'), date: U.iso(now), type: 'expense', amount: b.bill.amount, category: C.find(C.CATEGORIES, b.bill.id) ? b.bill.id : 'other', note: b.bill.name + ' (marked paid)' });
-            S.billsPaid[b.bill.id + ':' + U.monthKey(now)] = true;
+            var pt = FD.store.sanitizeTxn({ id: U.uid('t'), date: U.iso(now), type: 'expense', amount: b.bill.amount,
+              category: C.find(C.CATEGORIES, b.bill.id) ? b.bill.id : 'billpay', billId: b.bill.id, note: b.bill.name + ' (marked paid)' });
+            if (pt) S.transactions.push(pt);
             if (app.commit()) UI.toast(b.bill.name + ' marked paid \u2014 ' + money(b.bill.amount) + ' taken from your balance');
-          }, 'small', { 'aria-label': 'Mark ' + b.bill.name + ' paid' }));
+          }, 'small', { 'aria-label': 'Mark ' + b.bill.name + ' paid' }),
+          b.overdue ? UI.btn('Already paid', function () {
+            // already reflected in the balance you entered: just clear the reminder, don't take the money out again
+            S.billsPaid[b.bill.id + ':' + U.monthKey(now)] = true; app.commit();
+          }, 'small', { 'aria-label': b.bill.name + ' was already paid before I set my balance' }) : null);
       })),
       open.length > 6 ? h('p', { class: 'hint' }, '+ ' + (open.length - 6) + ' more later this month') : null,
-      paid.length ? h('details', null, h('summary', null, 'Paid this month (' + paid.length + ')'), h('ul', { class: 'bill-list paid' }, paid.map(function (b) { return h('li', null, h('span', { class: 'bill-name' }, '✓ ' + b.bill.name), h('span', { class: 'bill-amt' }, money(b.bill.amount))); }))) : null
+      paid.length ? h('details', null, h('summary', null, 'Paid this month (' + paid.length + ')'), h('ul', { class: 'bill-list paid' }, paid.map(paidRow))) : null
     ] : empty('No fixed bills yet. Add some in Settings → Edit answers.');
     return UI.card('Bills this month', body);
   }
@@ -128,6 +143,7 @@
   function goalStatusEl(st) {
     if (st.status === 'done') return h('span', { class: 'pill good' }, '✓ Done');
     if (st.status === 'on') return h('span', { class: 'pill good' }, '✓ On track');
+    if (st.pastDue) return h('span', { class: 'pill bad' }, 'Past due — ' + money(st.remaining) + ' to go');
     if (st.status === 'new') return h('span', { class: 'pill' }, 'Needs ' + money(st.needed) + '/mo');
     return h('span', { class: 'pill bad' }, 'Behind by ' + money(st.behindBy) + '/mo');
   }
@@ -144,7 +160,9 @@
         node.appendChild(h('div', { class: 'inline add-money' }, UI.moneyInput(null, function (v) { amt = v; }, { label: 'Add to ' + g.name }),
           UI.btn('Add', function () {
             if (!amt || amt <= 0) return;
-            S.transactions.push({ id: U.uid('t'), date: U.iso(now), type: 'expense', amount: U.round2(amt), category: 'savings', note: 'Goal: ' + g.name, goalId: g.id });
+            var gt = FD.store.sanitizeTxn({ id: U.uid('t'), date: U.iso(now), type: 'expense', amount: amt, category: 'savings', note: 'Goal: ' + g.name, goalId: g.id });
+            if (!gt) { UI.toast('Enter an amount first.'); return; }
+            S.transactions.push(gt);
             if (app.commit()) UI.toast('Added ' + money(amt) + ' to ' + g.name);
           }, 'small')));
       }
@@ -265,7 +283,7 @@
       sliders.appendChild(slider('Cut ' + v.name.toLowerCase() + ' by', max, 10, function () { return ui.whatIf.cut[v.id] || 0; }, function (x) { ui.whatIf.cut[v.id] = x; }, function (x) { return money(x) + '/mo'; }));
     });
     sliders.appendChild(slider('Add to savings', 500, 25, function () { return ui.whatIf.extraSavings; }, function (x) { ui.whatIf.extraSavings = x; }, function (x) { return money(x) + '/mo'; }));
-    sliders.appendChild(UI.btn('Reset what-if', function () { ui.whatIf = { cut: {}, extraSavings: 0 }; app.render(); }, 'link'));
+    sliders.appendChild(UI.btn('Reset what-if', function () { ui.whatIf = { cut: Object.create(null), extraSavings: 0 }; app.render(); }, 'link'));
 
     out.appendChild(result);
     out.appendChild(UI.card('What if…', sliders));
@@ -393,7 +411,8 @@
         preview.appendChild(h('ul', { class: 'txn-list' }, parsed.txns.slice(0, 5).map(txnRow)));
         preview.appendChild(h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: opts.alreadyCounted, onchange: function (e) { opts.alreadyCounted = e.target.checked; } }), ' These are already part of my current balance'));
         preview.appendChild(UI.btn('Import ' + parsed.txns.length, function () {
-          var add = parsed.txns;
+          var add = parsed.txns, todayIso = U.iso(app.now());
+          var net = add.reduce(function (s, t) { return t.date <= todayIso ? s + (t.type === 'income' ? t.amount : -t.amount) : s; }, 0); // future-dated rows don't touch today's balance
           if (S.transactions.length + add.length > FD.store.MAX_TXNS) { UI.toast('Too many transactions stored.'); return; }
           if (opts.alreadyCounted && S.settings.balanceSet) S.settings.openingBalance = U.round2(S.settings.openingBalance - net);
           S.transactions = S.transactions.concat(add); rows = null; parsed = null; if (app.commit()) UI.toast('Imported ' + add.length + ' transactions.');
@@ -465,7 +484,7 @@
       UI.btn('Save', function () {
         if (bal !== null) app.setBalance(bal, true);
         if (minv !== null) S.settings.minBalance = minv;
-        app.commit(); UI.toast('Saved');
+        if (app.commit()) UI.toast('Saved');
       }, 'primary'),
       h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: S.settings.showAll, onchange: function (e) { S.settings.showAll = e.target.checked; app.commit(); } }), ' Show every tool, even ones my answers didn’t need')
     )));
@@ -480,7 +499,7 @@
 
     // data
     var dataBody = h('div', { class: 'stack' },
-      h('p', { class: 'q-help' }, 'Your numbers are saved only in this browser — no account, nothing is sent anywhere. They are stored unencrypted, so anyone who can open this browser profile on this device (or a browser extension with access to this site) could read them. Private windows won’t keep them, and clearing browser data erases them. Exported backups are plain-text files you’re responsible for; “Delete all my data” doesn’t remove files you already exported.'),
+      h('p', { class: 'q-help' }, 'Your numbers are saved only in this browser — no account, nothing is sent anywhere. They are stored unencrypted, so anyone who can open this browser profile on this device (or a browser extension with access to this site) could read them. If your saved data ever becomes unreadable, a raw copy is kept under fd.v1.bak until you delete everything. Private windows won’t keep them, and clearing browser data erases them. Exported backups are plain-text files you’re responsible for; “Delete all my data” doesn’t remove files you already exported.'),
       UI.btn('Export my data (JSON)', function () { app.exportData(); }, 'ghost'));
     if (S.mode === 'demo') dataBody.appendChild(UI.btn('Use my own numbers', function () { app.startReal(); }, 'primary'));
     else dataBody.appendChild(UI.btn('Delete all my data', function () {

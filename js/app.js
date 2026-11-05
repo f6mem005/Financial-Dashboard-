@@ -16,7 +16,7 @@
 
   var app = {
     S: FD.store.load(),
-    ui: { tab: 'home', step: 0, editing: null, horizon: 3, whatIf: { cut: {}, extraSavings: 0 }, debtExtra: 50, txnLimit: 50 },
+    ui: { tab: 'home', step: 0, editing: null, horizon: 3, whatIf: { cut: Object.create(null), extraSavings: 0 }, debtExtra: 50, txnLimit: 50 },
     _cfg: null, _pendingBalance: undefined,
     now: function () { return U.today(); },
     cfg: function () {
@@ -34,6 +34,7 @@
     commit: function () { var ok = app.save(); app.render(); return ok; },
     setBalance: function (v, quiet) {
       app.S.settings.openingBalance = U.round2(v - E.netToDate(app.S, app.now())); app.S.settings.balanceSet = true;
+      app.S.settings.balanceDate = U.iso(app.now());
       if (!quiet) app.commit(); else app.save();
     },
     go: function (tab) { app.ui.tab = tab; app.ui.editing = null; app.render(true); },
@@ -51,7 +52,7 @@
       // never silently replace data that exists on disk (e.g. saved in another tab, or unreadable)
       if (FD.store.hasData() && !root.confirm('This browser already has saved Money Map data. Starting over will replace it. Continue?')) return;
       app.S = FD.store.defaultState(); app.S.mode = 'real'; app._cfg = null;
-      app.ui.step = 0; app.ui.editing = null; app.ui.tab = 'home'; app.ui.whatIf = { cut: {}, extraSavings: 0 };
+      app.ui.step = 0; app.ui.editing = null; app.ui.tab = 'home'; app.ui.whatIf = { cut: Object.create(null), extraSavings: 0 };
       app.save(); app.render(true);
     },
     startDemo: function () {
@@ -67,8 +68,15 @@
     },
     render: function (focusTitle) {
       var mount = doc.getElementById('app');
-      var prev = doc.activeElement, key = null;
-      if (!focusTitle && prev && /^(BUTTON|INPUT|SELECT)$/.test(prev.tagName) && mount.contains(prev)) key = prev.getAttribute('aria-label') || prev.textContent;
+      var prev = doc.activeElement, key = null, occ = 0;
+      function keyOf(el, i) { return el.getAttribute('aria-label') || el.textContent || (el.tagName + ':' + (el.type || '') + ':' + i); }
+      if (!focusTitle && prev && /^(BUTTON|INPUT|SELECT)$/.test(prev.tagName) && mount.contains(prev)) {
+        var before = mount.querySelectorAll('button,input,select');
+        for (var q = 0; q < before.length; q++) {
+          if (before[q] === prev) { key = keyOf(prev, q); break; }
+          if (keyOf(before[q], q) === keyOf(prev, -1)) occ++;
+        }
+      }
       mount.textContent = '';
       var S = app.S, node;
       if (S.mode === 'fresh') node = welcome();
@@ -84,8 +92,11 @@
       mount.appendChild(node);
       if (focusTitle) { var t = doc.getElementById('q-title'); if (t) { t.focus({ preventScroll: true }); root.scrollTo(0, 0); } }
       else if (key) {
-        var cands = mount.querySelectorAll('button,input,select');
-        for (var i = 0; i < cands.length; i++) { if ((cands[i].getAttribute('aria-label') || cands[i].textContent) === key) { cands[i].focus({ preventScroll: true }); break; } }
+        var cands = mount.querySelectorAll('button,input,select'), seen = 0;
+        for (var i = 0; i < cands.length; i++) {
+          if (keyOf(cands[i], i) !== key) continue;
+          if (seen++ === occ) { cands[i].focus({ preventScroll: true }); break; }
+        }
       }
     }
   };
@@ -96,7 +107,11 @@
 
   function welcome() {
     return h('main', { class: 'screen welcome', id: 'main' },
-      FD.store.loadFailed() ? h('p', { class: 'note', role: 'alert' }, 'We couldn\u2019t read your saved data. A raw copy was kept in this browser (storage key fd.v1.bak) so nothing is lost yet \u2014 but starting over will replace what\u2019s in fd.v1.') : null,
+      FD.store.loadFailed() ? h('div', { class: 'note', role: 'alert' },
+        h('p', null, FD.store.backupOk()
+          ? 'We couldn\u2019t read your saved data. A raw copy was kept in this browser (keys fd.v1.bak / fd.v1.bak2), but starting over will replace what\u2019s in fd.v1.'
+          : 'We couldn\u2019t read your saved data, and there wasn\u2019t room to keep a copy. Starting over will replace it.'),
+        UI.btn('Delete the unreadable data and any copies', function () { if (root.confirm('Delete the unreadable data and its backup copies? This can\u2019t be undone.')) app.wipe(); }, 'small danger')) : null,
       h('h1', { class: 'q-title', tabindex: '-1', id: 'q-title' }, 'Know where your money is going'),
       h('p', { class: 'q-help' }, 'Answer a few quick questions and get a simple picture of your month and where your balance is heading. No account. Your numbers stay on this device.'),
       h('div', { class: 'stack' },
@@ -121,9 +136,14 @@
 
   // Another tab changed the data: reload it instead of overwriting it on our next save.
   root.addEventListener('storage', function (e) {
-    if (e.key !== FD.store.KEY && e.key !== null) return;
+    if (e.storageArea !== root.localStorage || (e.key !== FD.store.KEY && e.key !== null)) return;
     if (app.S.mode === 'demo') return;
-    app.S = FD.store.load(); app._cfg = null; app.ui.editing = null;
+    var busy = (app.S.mode === 'real' && !app.S.onboarded) || app.ui.editing !== null ||
+      (doc.activeElement && /^(INPUT|SELECT|TEXTAREA)$/.test(doc.activeElement.tagName));
+    if (busy) { UI.toast('Your saved data changed in another tab. Finish here, then reload to see it.', 6000); return; } // don't wipe what you're typing
+    var fresh = FD.store.load();
+    if (JSON.stringify(fresh) === JSON.stringify(app.S)) return;
+    app.S = fresh; app._cfg = null;
     app.render(); UI.toast('Updated \u2014 your data changed in another tab.');
   });
 

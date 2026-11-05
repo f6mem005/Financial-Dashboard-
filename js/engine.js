@@ -56,11 +56,28 @@
     var iso = U.iso(date);
     return state.transactions.some(function (t) { return t.date === iso && t.type === type && t.category === cat; });
   }
-  /* A bill counts as paid for the month of `date` if it was marked paid or an expense was logged in its category. */
-  function billPaid(state, bill, date) {
-    var key = U.monthKey(date);
+  /* A bill counts as paid for the month of `date` if: it was marked paid, a payment dated today or earlier was logged,
+     or it fell due before the day you told us your balance (that balance already reflects it). */
+  function billPaid(state, bill, date, now) {
+    now = now || U.today();
+    var key = U.monthKey(date), nowIso = U.iso(now);
     if (state.billsPaid[bill.id + ':' + key]) return true;
-    return state.transactions.some(function (t) { return t.type === 'expense' && t.category === bill.id && t.date.slice(0, 7) === key; });
+    if (state.transactions.some(function (t) {
+      return t.type === 'expense' && t.date <= nowIso && t.date.slice(0, 7) === key && (t.billId === bill.id || t.category === bill.id);
+    })) return true;
+    var bd = state.settings.balanceSet ? U.parseISO(state.settings.balanceDate) : null;
+    if (bd && U.monthKey(bd) === key) {
+      var due = new Date(date.getFullYear(), date.getMonth(), U.clampDay(date.getFullYear(), date.getMonth(), bill.due));
+      if (due < bd) return true;
+    }
+    return false;
+  }
+  /* Bills due earlier this month that are still unpaid: treated as due now. */
+  function overdueBills(cfg, state, now) {
+    return cfg.bills.filter(function (b) {
+      var due = new Date(now.getFullYear(), now.getMonth(), U.clampDay(now.getFullYear(), now.getMonth(), b.due));
+      return due < now && !billPaid(state, b, now, now);
+    });
   }
 
   /* ---------- this month ---------- */
@@ -72,7 +89,7 @@
     var income = Math.max(received, expected);
     var bills = cfg.bills.map(function (b) {
       var due = new Date(now.getFullYear(), now.getMonth(), U.clampDay(now.getFullYear(), now.getMonth(), b.due));
-      var paid = billPaid(state, b, now);
+      var paid = billPaid(state, b, now, now);
       return { bill: b, due: due, paid: paid, overdue: !paid && due < now };
     });
     return { received: received, expected: expected, income: income, spent: spent, remaining: income - spent, byCategory: spentMap, bills: bills };
@@ -105,14 +122,18 @@
       if (t.type === 'expense' && VAR_IDS.indexOf(t.category) >= 0 && t.date <= nowIso && (first === null || t.date < first)) first = t.date;
     });
     var span = first ? U.diffDays(U.parseISO(first), now) + 1 : 0;
-    var usingLogged = span >= 28;
-    var win = Math.min(span, 90), totals = Object.create(null);
-    if (usingLogged) {
+    var win = Math.min(span, 90), totals = Object.create(null), count = 0, daySet = Object.create(null);
+    if (span >= 28) {
       var fromIso = U.iso(U.addDays(now, -win + 1));
       state.transactions.forEach(function (t) {
-        if (t.type === 'expense' && VAR_IDS.indexOf(t.category) >= 0 && t.date >= fromIso && t.date <= nowIso) totals[t.category] = (totals[t.category] || 0) + t.amount;
+        if (t.type === 'expense' && VAR_IDS.indexOf(t.category) >= 0 && t.date >= fromIso && t.date <= nowIso) {
+          totals[t.category] = (totals[t.category] || 0) + t.amount; count++; daySet[t.date] = true;
+        }
       });
     }
+    // 4+ weeks of history AND real coverage (10+ purchases on 5+ different days) before the logged average replaces your estimate
+    var usingLogged = span >= 28 && count >= 10 && Object.keys(daySet).length >= 5;
+    if (!usingLogged) totals = Object.create(null);
     var months = win / 30.4, listed = Object.create(null);
     var rows = cfg.variable.map(function (v) {
       listed[v.id] = true;
@@ -142,7 +163,7 @@
     var age = U.diffDays(start, now);
     var windowDays = Math.max(Math.min(90, age + 1), 30);
     var pace = recent / (windowDays / 30.4);
-    var status = remaining <= 0 ? 'done' : pace + 0.005 >= needed ? 'on' : (contributed === 0 && age < 30 ? 'new' : 'behind');
+    var status = remaining <= 0 ? 'done' : pace + 0.005 >= needed ? 'on' : (age < 30 ? 'new' : 'behind');
     return { goal: g, saved: saved, remaining: remaining, pct: Math.min(saved / g.target, 1), needed: needed, pace: pace,
       behindBy: status === 'behind' ? needed - pace : 0, status: status, pastDue: end < now && remaining > 0, monthsLeft: monthsLeft };
   }
@@ -197,11 +218,12 @@
       }
       cfg.bills.forEach(function (b) {
         if (U.clampDay(y, m, b.due) !== dom) return;
-        if (U.monthKey(d) === U.monthKey(now) && billPaid(state, b, d)) return;
+        if (U.monthKey(d) === U.monthKey(now) && billPaid(state, b, d, now)) return;
         delta -= b.amount; events.push({ date: d, label: b.name, amount: -b.amount });
       });
+      if (today) overdueBills(cfg, state, now).forEach(function (b) { delta -= b.amount; events.push({ date: d, label: b.name + ' (overdue)', amount: -b.amount }); });
       cfg.annual.forEach(function (a) {
-        if (a.month === m + 1 && dom === 1 && !(today && loggedOn(state, d, 'expense', a.id))) { delta -= a.amount; events.push({ date: d, label: a.name, amount: -a.amount }); }
+        if (a.month === m + 1 && dom === 1) { delta -= a.amount; events.push({ date: d, label: a.name, amount: -a.amount }); }
       });
       if (!today) delta -= varTotal / dim; // today's spending is already in your balance
       bal += delta;
@@ -230,17 +252,18 @@
       var y = d.getFullYear(), m = d.getMonth(), today = U.iso(d) === U.iso(now);
       cfg.bills.forEach(function (b) {
         if (U.clampDay(y, m, b.due) !== d.getDate()) return;
-        if (U.monthKey(d) === U.monthKey(now) && billPaid(state, b, d)) return;
+        if (U.monthKey(d) === U.monthKey(now) && billPaid(state, b, d, now)) return;
         committed += b.amount; items.push({ date: new Date(d), label: b.name, amount: b.amount });
       });
       if (d.getDate() === 1) {
         var dm = cfg.debts.reduce(function (s, x) { return s + Math.min(x.min, x.balance); }, 0);
         if (dm && !(today && loggedOn(state, d, 'expense', 'debt'))) { committed += dm; items.push({ date: new Date(d), label: 'Debt payments', amount: dm }); }
         cfg.annual.forEach(function (a) {
-          if (a.month === m + 1 && !(today && loggedOn(state, d, 'expense', a.id))) { committed += a.amount; items.push({ date: new Date(d), label: a.name, amount: a.amount }); }
+          if (a.month === m + 1) { committed += a.amount; items.push({ date: new Date(d), label: a.name, amount: a.amount }); }
         });
       }
     }
+    overdueBills(cfg, state, now).forEach(function (b) { committed += b.amount; items.push({ date: new Date(now), label: b.name + ' (overdue)', amount: b.amount }); });
     var days = Math.max(U.diffDays(now, next), 1), safe = balance - committed;
     return { safe: safe, balance: balance, base: base, payToday: payToday, pay: pay, committed: committed, items: items, next: next, days: days, perDay: safe / days };
   }
@@ -318,7 +341,7 @@
 
   FD.engine = { paydays: paydays, currentBalance: currentBalance, netToDate: netToDate, monthSummary: monthSummary, categoryRows: categoryRows,
     leaks: leaks, variableMonthly: variableMonthly, goalStatus: goalStatus, forecast: forecast, safeToSpend: safeToSpend,
-    cashCalendar: cashCalendar, debtPlan: debtPlan, payoff: payoff, subscriptions: subscriptions, alerts: alerts,
+    cashCalendar: cashCalendar, overdueBills: overdueBills, debtPlan: debtPlan, payoff: payoff, subscriptions: subscriptions, alerts: alerts,
     spentByCategory: spentByCategory, billPaid: billPaid };
   if (typeof module !== 'undefined' && module.exports) module.exports = FD;
 })(typeof window !== 'undefined' ? window : globalThis);

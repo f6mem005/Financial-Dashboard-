@@ -105,6 +105,7 @@
     .concat(VARIABLE.map(function (v) { return { id: v.id, name: v.short || v.label, kind: 'var' }; }))
     .concat([
       { id: 'other', name: 'Other', kind: 'var' },
+      { id: 'billpay', name: 'Bill payment', kind: 'bill' },
       { id: 'debt', name: 'Debt payment', kind: 'debt' },
       { id: 'savings', name: 'Savings', kind: 'savings' }
     ]);

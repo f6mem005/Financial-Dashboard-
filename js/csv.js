@@ -38,9 +38,10 @@
     return rows;
   }
 
-  function findCol(header, names) {
+  function findCol(header, names, exclude) {
     for (var i = 0; i < header.length; i++) {
       var h = header[i].toLowerCase().trim();
+      if (exclude && exclude.test(h)) continue;
       for (var j = 0; j < names.length; j++) if (h === names[j] || h.indexOf(names[j]) >= 0) return i;
     }
     return -1;
@@ -48,11 +49,16 @@
 
   /* Strict: anything we can't read unambiguously returns null (row is counted as skipped, never guessed). */
   function parseAmount(s) {
-    s = String(s == null ? '' : s).replace(/[\u2212\u2013\u2012]/g, '-').replace(/[$\u20ac\u00a3\s]/g, '');
+    s = String(s == null ? '' : s);
+    if (s.length > 40) return null; // real amounts are short; also keeps every regex below linear on hostile input
+    s = s.replace(/[\u2212\u2013\u2012]/g, '-').replace(/[$\u20ac\u00a3\s]/g, '').replace(/^\+/, '');
     if (!s) return null;
     var neg = /^\(.*\)$/.test(s) || /^-/.test(s) || /-$/.test(s);
-    var core = s.replace(/^[(-]+|[)-]+$/g, '');
+    var core = s;
+    while (core.length && (core[0] === '(' || core[0] === '-')) core = core.slice(1);
+    while (core.length && (core[core.length - 1] === ')' || core[core.length - 1] === '-')) core = core.slice(0, -1);
     if (/^\d{1,3}(\.\d{3})*,\d{1,2}$/.test(core) || /^\d+,\d{1,2}$/.test(core)) core = core.replace(/\./g, '').replace(',', '.');
+    else if (/^[1-9]\d{0,2}(\.\d{3})+$/.test(core)) core = core.replace(/\./g, ''); // 1.234 = one thousand two hundred thirty-four
     else core = core.replace(/,/g, '');
     if (!/^(\d+(\.\d+)?|\.\d+)$/.test(core)) return null;
     var n = parseFloat(core);
@@ -82,6 +88,8 @@
     [/steam|playstation|xbox|nintendo/i, 'gaming'],
     [/petco|petsmart|\bvet\b/i, 'pets'],
     [/\brent\b|landlord|property mgmt/i, 'rent'],
+    [/geico|state farm|progressive|allstate|insurance/i, 'carins'],
+    [/loan|navient|nelnet|sallie mae|student|credit card|card payment|autopay.*(visa|mastercard|amex)/i, 'debt'],
     [/verizon|t-mobile|at&t|mint mobile/i, 'phone'],
     [/comcast|xfinity|spectrum/i, 'internet'],
     [/electric|water util|power co|pg&e|con ed/i, 'utilities'],
@@ -99,7 +107,7 @@
     var header = rows[0];
     var cDate = findCol(header, ['transaction date', 'posted', 'date']);
     var cDesc = findCol(header, ['description', 'memo', 'payee', 'merchant', 'name', 'details']);
-    var cAmt = findCol(header, ['amount']);
+    var cAmt = findCol(header, ['amount'], /debit|credit|withdraw|deposit/);
     var cDebit = findCol(header, ['debit', 'withdrawal']);
     var cCredit = findCol(header, ['credit', 'deposit']);
     if (cDate < 0 || (cAmt < 0 && cDebit < 0 && cCredit < 0)) {

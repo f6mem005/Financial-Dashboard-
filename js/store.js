@@ -6,8 +6,8 @@
   var U = FD.util, C = FD.catalog;
   var KEY = 'fd.v1';
   var MAX_TXNS = 20000, MAX_ROWS = 40;
-  var ID_RE = /^(?!(?:__proto__|constructor|prototype|toString|valueOf|hasOwnProperty)$)[A-Za-z0-9_-]{1,60}$/;
-  var BAK_KEY = 'fd.v1.bak';
+  var ID_RE = /^(?!__)(?!(?:constructor|prototype|toString|toLocaleString|valueOf|hasOwnProperty|isPrototypeOf|propertyIsEnumerable)$)[A-Za-z0-9_-]{1,60}$/;
+  var BAK1 = 'fd.v1.bak', BAK2 = 'fd.v1.bak2'; // oldest and newest unreadable copies
   var EXPENSE_CATS = C.CATEGORIES.map(function (c) { return c.id; });
   var INCOME_CATS = C.INCOME_CATEGORIES.map(function (c) { return c.id; });
 
@@ -15,7 +15,7 @@
     return {
       v: 1, mode: 'fresh', // 'fresh' | 'demo' | 'real'
       answers: {}, onboarded: false,
-      settings: { openingBalance: 0, balanceSet: false, minBalance: 0, includeGoals: true, showAll: false },
+      settings: { openingBalance: 0, balanceSet: false, balanceDate: null, minBalance: 0, includeGoals: true, showAll: false },
       transactions: [], billsPaid: {}, subs: []
     };
   }
@@ -71,6 +71,7 @@
       category: okCats.indexOf(t.category) >= 0 ? t.category : (type === 'income' ? 'extra' : 'other'), note: U.cleanStr(t.note, 80)
     };
     if (typeof t.goalId === 'string' && ID_RE.test(t.goalId)) o.goalId = t.goalId;
+    if (typeof t.billId === 'string' && ID_RE.test(t.billId)) o.billId = t.billId;
     return o;
   }
 
@@ -83,11 +84,16 @@
     if (isObj(raw.settings)) {
       s.settings.openingBalance = U.num(raw.settings.openingBalance, 0, -1e8, 1e8);
       s.settings.balanceSet = !!raw.settings.balanceSet;
+      s.settings.balanceDate = U.parseISO(raw.settings.balanceDate) ? raw.settings.balanceDate : null;
       s.settings.minBalance = U.num(raw.settings.minBalance, 0, 0, 1e7);
       s.settings.includeGoals = raw.settings.includeGoals !== false;
       s.settings.showAll = !!raw.settings.showAll;
     }
-    s.transactions = arr(raw.transactions, MAX_TXNS).map(sanitizeTxn).filter(Boolean);
+    var seenIds = Object.create(null);
+    s.transactions = arr(raw.transactions, MAX_TXNS).map(sanitizeTxn).filter(Boolean).map(function (t) {
+      if (seenIds[t.id]) t.id = U.uid('t'); // duplicate ids would make one delete remove several rows
+      seenIds[t.id] = true; return t;
+    });
     if (isObj(raw.billsPaid)) {
       Object.keys(raw.billsPaid).slice(0, 2000).forEach(function (k) {
         if (/^[A-Za-z0-9_-]{1,60}:\d{4}-\d{2}$/.test(k) && raw.billsPaid[k] === true) s.billsPaid[k] = true;
@@ -99,32 +105,46 @@
     return s;
   }
 
-  var lastLoadError = false;
-  /* Unreadable data is never silently thrown away: a raw copy is kept under fd.v1.bak before anything can overwrite it. */
+  var lastLoadError = false, backupKept = false;
+  function keepBackup(raw) {
+    try {
+      var ls = root.localStorage;
+      var slot = ls.getItem(BAK1) === null ? BAK1 : BAK2; // first copy is never overwritten; later ones replace the newest slot
+      ls.setItem(slot, raw.slice(0, 8e6));
+      return ls.getItem(slot) === raw.slice(0, 8e6);
+    } catch (e) { return false; }
+  }
+  /* Unreadable data is never silently thrown away: a raw copy is kept before anything can overwrite it. */
   function load() {
-    lastLoadError = false;
+    lastLoadError = false; backupKept = false;
     var raw = null;
     try {
       raw = root.localStorage && root.localStorage.getItem(KEY);
       if (!raw) return defaultState();
       if (raw.length > 8e6) throw new Error('too large');
-      return sanitize(JSON.parse(raw));
+      var parsed = JSON.parse(raw);
+      if (isObj(parsed) && U.num(parsed.v, 1) > 1) throw new Error('newer version'); // don't down-convert data from a newer app
+      return sanitize(parsed);
     } catch (e) {
       lastLoadError = true;
-      try { if (raw && !root.localStorage.getItem(BAK_KEY)) root.localStorage.setItem(BAK_KEY, raw.slice(0, 8e6)); } catch (e2) { /* ignore */ }
+      if (raw) backupKept = keepBackup(raw);
       return defaultState();
     }
   }
   function hasData() { try { return !!root.localStorage.getItem(KEY); } catch (e) { return false; } }
   function loadFailed() { return lastLoadError; }
+  function backupOk() { return backupKept; }
   /* returns true on success; demo data is never written to disk */
   function save(state) {
     if (state.mode !== 'real') return true;
     try { root.localStorage.setItem(KEY, JSON.stringify(state)); return true; } catch (e) { return false; }
   }
-  function clear() { try { root.localStorage.removeItem(KEY); root.localStorage.removeItem(BAK_KEY); } catch (e) { /* ignore */ } }
+  function clear() {
+    lastLoadError = false; backupKept = false;
+    try { root.localStorage.removeItem(KEY); root.localStorage.removeItem(BAK1); root.localStorage.removeItem(BAK2); } catch (e) { /* ignore */ }
+  }
 
   FD.store = { KEY: KEY, defaultState: defaultState, sanitize: sanitize, sanitizeAnswers: sanitizeAnswers, sanitizeTxn: sanitizeTxn,
-    load: load, save: save, clear: clear, hasData: hasData, loadFailed: loadFailed, MAX_TXNS: MAX_TXNS };
+    load: load, save: save, clear: clear, hasData: hasData, loadFailed: loadFailed, backupOk: backupOk, MAX_TXNS: MAX_TXNS };
   if (typeof module !== 'undefined' && module.exports) module.exports = FD;
 })(typeof window !== 'undefined' ? window : globalThis);

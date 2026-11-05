@@ -71,7 +71,7 @@
     var state = FD.store.defaultState();
     state.mode = 'demo'; state.onboarded = true; state.answers = answers; state.transactions = txns;
     state.settings.openingBalance = U.round2(780 - net); state.settings.balanceSet = true;
-    state.settings.minBalance = 100;
+    state.settings.minBalance = 100; state.settings.balanceDate = iso(U.addDays(now, -75));
     state.subs = [
       { id: 's1', name: 'Streaming', amount: 15.99, cycle: 'monthly' }, { id: 's2', name: 'Music', amount: 10.99, cycle: 'monthly' },
       { id: 's3', name: 'Cloud storage', amount: 2.99, cycle: 'monthly' }, { id: 's4', name: 'Game pass', amount: 8, cycle: 'monthly' }
