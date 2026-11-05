@@ -1,0 +1,133 @@
+/* csv.js — bank CSV parsing and mapping. Hard limits on size/rows; output goes through store.sanitizeTxn. */
+(function (root) {
+  'use strict';
+  var FD = (root.FD = root.FD || {});
+  var U = FD.util;
+  var MAX_CHARS = 2000000, MAX_ROWS = 5000;
+
+  function detectDelimiter(line) {
+    var best = ',', bestN = 0;
+    [',', ';', '\t'].forEach(function (d) { var n = line.split(d).length; if (n > bestN) { bestN = n; best = d; } });
+    return best;
+  }
+
+  /* RFC-4180-style parser: quoted fields, escaped quotes, CRLF/LF, embedded newlines. */
+  function parse(text) {
+    if (typeof text !== 'string') throw new Error('Not a text file.');
+    if (text.length > MAX_CHARS) throw new Error('That file is too big (limit about 2 MB).');
+    text = text.replace(/^﻿/, '');
+    var delim = detectDelimiter(text.split(/\r?\n/, 1)[0] || '');
+    var rows = [], row = [], field = '', q = false;
+    for (var i = 0; i < text.length; i++) {
+      var c = text[i];
+      if (q) {
+        if (c === '"') { if (text[i + 1] === '"') { field += '"'; i++; } else q = false; } else field += c;
+      } else if (c === '"') q = true;
+      else if (c === delim) { row.push(field); field = ''; }
+      else if (c === '\n' || c === '\r') {
+        if (c === '\r' && text[i + 1] === '\n') i++;
+        row.push(field); field = '';
+        if (row.length > 1 || row[0] !== '') rows.push(row);
+        row = [];
+        if (rows.length > MAX_ROWS + 1) throw new Error('Too many rows (limit ' + MAX_ROWS + ').');
+      } else field += c;
+    }
+    row.push(field);
+    if (row.length > 1 || row[0] !== '') rows.push(row);
+    if (rows.length > MAX_ROWS + 1) throw new Error('Too many rows (limit ' + MAX_ROWS + ').');
+    return rows;
+  }
+
+  function findCol(header, names) {
+    for (var i = 0; i < header.length; i++) {
+      var h = header[i].toLowerCase().trim();
+      for (var j = 0; j < names.length; j++) if (h === names[j] || h.indexOf(names[j]) >= 0) return i;
+    }
+    return -1;
+  }
+
+  function parseAmount(s) {
+    s = String(s == null ? '' : s).trim();
+    if (!s) return null;
+    var neg = /^\(.*\)$/.test(s) || /-\s*$/.test(s) || /^-/.test(s) || /^\$-/.test(s);
+    var n = parseFloat(s.replace(/[^0-9.]/g, ''));
+    if (!isFinite(n)) return null;
+    return neg ? -n : n;
+  }
+
+  function parseDate(s, fmt) {
+    s = String(s || '').trim();
+    var m;
+    if ((m = /^(\d{4})-(\d{1,2})-(\d{1,2})/.exec(s))) return mk(+m[1], +m[2], +m[3]);
+    if ((m = /^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{2,4})/.exec(s))) {
+      var a = +m[1], b = +m[2], y = +m[3];
+      if (y < 100) y += 2000;
+      return fmt === 'dmy' ? mk(y, b, a) : mk(y, a, b);
+    }
+    return null;
+    function mk(y, mo, d) { var dt = new Date(y, mo - 1, d); return dt.getFullYear() === y && dt.getMonth() === mo - 1 && dt.getDate() === d ? U.iso(dt) : null; }
+  }
+
+  var RULES = [
+    [/uber eats|doordash|grubhub|chipotle|mcdonald|starbucks|restaurant|cafe|coffee|pizza|taco|burger|dunkin/i, 'dining'],
+    [/kroger|safeway|whole foods|trader joe|aldi|walmart grocery|grocery|publix|costco|market/i, 'groceries'],
+    [/shell|chevron|exxon|bp |gas station|metro|transit|uber|lyft|parking/i, 'transport'],
+    [/netflix|spotify|hulu|disney|apple\.com\/bill|youtube|prime video|subscription/i, 'subs'],
+    [/amazon|target|walmart|etsy|best buy|ebay/i, 'shopping'],
+    [/steam|playstation|xbox|nintendo/i, 'gaming'],
+    [/petco|petsmart|vet/i, 'pets'],
+    [/rent|landlord|property mgmt/i, 'rent'],
+    [/verizon|t-mobile|at&t|mint mobile/i, 'phone'],
+    [/comcast|xfinity|spectrum/i, 'internet'],
+    [/electric|water util|power co|pg&e|con ed/i, 'utilities'],
+    [/planet fitness|gym|ymca/i, 'gym']
+  ];
+  function categorize(desc) {
+    for (var i = 0; i < RULES.length; i++) if (RULES[i][0].test(desc)) return RULES[i][1];
+    return 'other';
+  }
+
+  /* opts: {dateFormat:'mdy'|'dmy', spendingPositive:bool, existing:[txns]} */
+  function toTransactions(rows, opts) {
+    opts = opts || {};
+    if (rows.length < 2) throw new Error('No transactions found in that file.');
+    var header = rows[0];
+    var cDate = findCol(header, ['transaction date', 'posted', 'date']);
+    var cDesc = findCol(header, ['description', 'memo', 'payee', 'merchant', 'name', 'details']);
+    var cAmt = findCol(header, ['amount']);
+    var cDebit = findCol(header, ['debit', 'withdrawal']);
+    var cCredit = findCol(header, ['credit', 'deposit']);
+    if (cDate < 0 || (cAmt < 0 && cDebit < 0 && cCredit < 0)) {
+      throw new Error('Couldn’t find a Date column and an Amount column. Check the first row of your file has headers.');
+    }
+    var seen = {};
+    (opts.existing || []).forEach(function (t) { seen[t.date + '|' + t.amount + '|' + t.type + '|' + t.note] = true; });
+    var out = [], skipped = 0, dupes = 0;
+    for (var i = 1; i < rows.length; i++) {
+      var r = rows[i];
+      var date = parseDate(r[cDate], opts.dateFormat);
+      var amt;
+      if (cAmt >= 0) {
+        amt = parseAmount(r[cAmt]);
+        if (amt !== null && opts.spendingPositive) amt = -amt;
+      } else {
+        var dr = parseAmount(r[cDebit]), cr = parseAmount(r[cCredit]);
+        amt = cr ? Math.abs(cr) : dr ? -Math.abs(dr) : null;
+      }
+      if (!date || amt === null || amt === 0) { skipped++; continue; }
+      var note = U.cleanStr(cDesc >= 0 ? r[cDesc] : '', 80);
+      var t = FD.store.sanitizeTxn({
+        id: U.uid('t'), date: date, type: amt > 0 ? 'income' : 'expense', amount: Math.abs(amt),
+        category: amt > 0 ? (/payroll|direct dep|salary|paycheck/i.test(note) ? 'pay' : 'extra') : categorize(note), note: note
+      });
+      if (!t) { skipped++; continue; }
+      var k = t.date + '|' + t.amount + '|' + t.type + '|' + t.note;
+      if (seen[k]) { dupes++; continue; }
+      seen[k] = true; out.push(t);
+    }
+    return { txns: out, skipped: skipped, dupes: dupes };
+  }
+
+  FD.csv = { parse: parse, toTransactions: toTransactions, parseAmount: parseAmount, parseDate: parseDate, categorize: categorize, MAX_ROWS: MAX_ROWS };
+  if (typeof module !== 'undefined' && module.exports) module.exports = FD;
+})(typeof window !== 'undefined' ? window : globalThis);
