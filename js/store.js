@@ -6,7 +6,10 @@
   var U = FD.util, C = FD.catalog;
   var KEY = 'fd.v1';
   var MAX_TXNS = 20000, MAX_ROWS = 40;
-  var ID_RE = /^[A-Za-z0-9_-]{1,60}$/;
+  var ID_RE = /^(?!(?:__proto__|constructor|prototype|toString|valueOf|hasOwnProperty)$)[A-Za-z0-9_-]{1,60}$/;
+  var BAK_KEY = 'fd.v1.bak';
+  var EXPENSE_CATS = C.CATEGORIES.map(function (c) { return c.id; });
+  var INCOME_CATS = C.INCOME_CATEGORIES.map(function (c) { return c.id; });
 
   function defaultState() {
     return {
@@ -61,9 +64,11 @@
     if (!isObj(t) || !U.parseISO(t.date)) return null;
     var amount = U.round2(U.num(t.amount, 0, 0, 1e7));
     if (amount <= 0) return null;
+    var type = t.type === 'income' ? 'income' : 'expense';
+    var okCats = type === 'income' ? INCOME_CATS : EXPENSE_CATS;
     var o = {
-      id: id(t.id, 't'), date: t.date, amount: amount, type: t.type === 'income' ? 'income' : 'expense',
-      category: typeof t.category === 'string' && ID_RE.test(t.category) ? t.category : 'other', note: U.cleanStr(t.note, 80)
+      id: id(t.id, 't'), date: t.date, amount: amount, type: type,
+      category: okCats.indexOf(t.category) >= 0 ? t.category : (type === 'income' ? 'extra' : 'other'), note: U.cleanStr(t.note, 80)
     };
     if (typeof t.goalId === 'string' && ID_RE.test(t.goalId)) o.goalId = t.goalId;
     return o;
@@ -94,21 +99,32 @@
     return s;
   }
 
+  var lastLoadError = false;
+  /* Unreadable data is never silently thrown away: a raw copy is kept under fd.v1.bak before anything can overwrite it. */
   function load() {
+    lastLoadError = false;
+    var raw = null;
     try {
-      var raw = root.localStorage && root.localStorage.getItem(KEY);
-      if (!raw || raw.length > 8e6) return defaultState();
+      raw = root.localStorage && root.localStorage.getItem(KEY);
+      if (!raw) return defaultState();
+      if (raw.length > 8e6) throw new Error('too large');
       return sanitize(JSON.parse(raw));
-    } catch (e) { return defaultState(); }
+    } catch (e) {
+      lastLoadError = true;
+      try { if (raw && !root.localStorage.getItem(BAK_KEY)) root.localStorage.setItem(BAK_KEY, raw.slice(0, 8e6)); } catch (e2) { /* ignore */ }
+      return defaultState();
+    }
   }
+  function hasData() { try { return !!root.localStorage.getItem(KEY); } catch (e) { return false; } }
+  function loadFailed() { return lastLoadError; }
   /* returns true on success; demo data is never written to disk */
   function save(state) {
     if (state.mode !== 'real') return true;
     try { root.localStorage.setItem(KEY, JSON.stringify(state)); return true; } catch (e) { return false; }
   }
-  function clear() { try { root.localStorage.removeItem(KEY); } catch (e) { /* ignore */ } }
+  function clear() { try { root.localStorage.removeItem(KEY); root.localStorage.removeItem(BAK_KEY); } catch (e) { /* ignore */ } }
 
   FD.store = { KEY: KEY, defaultState: defaultState, sanitize: sanitize, sanitizeAnswers: sanitizeAnswers, sanitizeTxn: sanitizeTxn,
-    load: load, save: save, clear: clear, MAX_TXNS: MAX_TXNS };
+    load: load, save: save, clear: clear, hasData: hasData, loadFailed: loadFailed, MAX_TXNS: MAX_TXNS };
   if (typeof module !== 'undefined' && module.exports) module.exports = FD;
 })(typeof window !== 'undefined' ? window : globalThis);

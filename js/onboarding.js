@@ -11,17 +11,16 @@
   function monthOptions() { return U.MONTHS.map(function (m, i) { return [i + 1, m]; }); }
 
   /* ----- renderers by question kind ----- */
-  function singleBody(app, q, advance) {
+  function singleBody(app, q, advance, editing) {
     var cur = app.S.answers[q.id];
     return h('div', { class: 'options' }, q.options.map(function (o) {
       return h('button', { type: 'button', class: 'option' + (cur === o.id ? ' on' : ''), 'aria-pressed': cur === o.id ? 'true' : 'false',
-        onclick: function () { app.S.answers[q.id] = o.id; app.save(); advance(true); } },
+        onclick: function () { app.S.answers[q.id] = o.id; if (editing) app.render(); else { app.save(); advance(true); } } },
         h('span', { class: 'option-label' }, o.label), o.help ? h('span', { class: 'option-help' }, o.help) : null);
     }));
   }
 
   function multiBody(app, q) {
-    var cur = app.S.answers[q.id] || [];
     var box = h('div', { class: 'options' });
     function draw() {
       box.textContent = '';
@@ -36,7 +35,7 @@
           } }, h('span', { class: 'option-label' }, (on ? '✓ ' : '') + o.label)));
       });
     }
-    void cur; draw();
+    draw();
     return box;
   }
 
@@ -122,6 +121,7 @@
         var d = h('input', { type: 'date', class: 'input', 'aria-label': 'Target date', value: r.date || '', min: U.iso(app.now()) });
         d.addEventListener('change', function () { r.date = U.parseISO(d.value) ? d.value : null; });
         fields.appendChild(UI.field('By when', d));
+        fields.appendChild(UI.field('Already saved (optional)', UI.moneyInput(r.saved0 || null, function (v) { r.saved0 = v || 0; }, { label: 'Already saved' })));
       } else {
         fields.appendChild(UI.field(q.amountLabel, UI.moneyInput(r[q.amountKey], function (v) { r[q.amountKey] = v; }, { label: q.amountLabel, placeholder: typical !== null ? String(typical) : '0' }),
           typical !== null ? 'Typical: ' + U.money(typical) + ' — used if blank' : null));
@@ -153,10 +153,15 @@
     opts = opts || {};
     var q = Q[qi], total = Q.length;
     function next() { opts.onNext ? opts.onNext() : app.goStep(qi + 1); }
-    function advance(auto) { app.save(); if (auto) setTimeout(next, 180); else next(); }
+    function advance(auto) {
+      app.save();
+      if (!auto) { next(); return; }
+      clearTimeout(app._adv);
+      app._adv = setTimeout(function () { if (app.ui.step === qi) next(); }, 180); // ignored if you already tapped Back
+    }
 
     var body;
-    if (q.kind === 'single') body = singleBody(app, q, advance);
+    if (q.kind === 'single') body = singleBody(app, q, advance, opts.editing);
     else if (q.kind === 'multi') body = multiBody(app, q);
     else if (q.kind === 'pay') body = payBody(app);
     else body = rowsBody(app, q);
@@ -166,9 +171,11 @@
       FD.charts.bar((qi + 1) / total, '', 'Questionnaire progress'));
 
     var footer = opts.editing
-      ? h('div', { class: 'nav-row' }, UI.btn('Cancel', function () { opts.onCancel(); }, 'ghost'), UI.btn('Save', function () { app.save(); opts.onNext(); }, 'primary'))
+      ? h('div', { class: 'nav-row' }, UI.btn('Cancel', function () { opts.onCancel(); }, 'ghost'),
+        UI.btn('Use defaults', function () { delete app.S.answers[q.id]; app.save(); opts.onNext(); }, 'link'),
+        UI.btn('Save', function () { app.save(); opts.onNext(); }, 'primary'))
       : h('div', { class: 'nav-row' },
-        UI.btn('Back', function () { app.save(); app.goStep(qi - 1); }, 'ghost', qi === 0 ? { disabled: true } : null),
+        UI.btn('Back', function () { clearTimeout(app._adv); app.save(); app.goStep(qi - 1); }, 'ghost', qi === 0 ? { disabled: true } : null),
         UI.btn('Skip', function () { delete app.S.answers[q.id]; app.save(); next(); }, 'link'),
         UI.btn(qi === total - 1 ? 'Finish' : 'Next', function () { advance(false); }, 'primary'));
 
@@ -182,7 +189,7 @@
     var cfg = app.cfg();
     var bal = h('div');
     var s = app.S.settings;
-    bal.appendChild(UI.field('What’s in your checking account right now? (optional)', UI.moneyInput(s.balanceSet ? app.balance() : null, function (v) { app._pendingBalance = v; }, { label: 'Current balance' }), 'Used as the starting point for your forecast. Skip and we’ll start from $0.'));
+    bal.appendChild(UI.field('What’s in your checking account right now? (optional)', UI.moneyInput(s.balanceSet ? app.balance() : null, function (v) { app._pendingBalance = v; }, { label: 'Current balance', min: -1e8 }), 'Used as the starting point for your forecast. Overdrawn? Enter a negative number. Skip and we’ll start from $0.'));
     var why = cfg.why.length ? h('ul', { class: 'why' }, cfg.why.map(function (w) { return h('li', null, w); })) : h('p', { class: 'q-help' }, 'Basic dashboard: your month at a glance and a balance forecast.');
     var assumed = cfg.assumed.length ? h('div', { class: 'flag' }, h('strong', null, 'Estimates we filled in for you'), h('ul', null, cfg.assumed.map(function (a) { return h('li', null, a); })), h('p', { class: 'hint' }, 'Change any of these later in Settings.')) : null;
     return h('main', { class: 'screen onboarding', id: 'main' },

@@ -5,6 +5,9 @@
   var U = FD.util, h = U.h, UI = FD.ui, E = FD.engine;
   var doc = root.document;
 
+  // Clickjacking guard: a <meta> CSP can't set frame-ancestors, so refuse to render inside another page.
+  try { if (root.top !== root.self) doc.documentElement.hidden = true; } catch (e) { doc.documentElement.hidden = true; }
+
   var TABS = [['home', 'Home', 'M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z'],
     ['forecast', 'Forecast', 'M3 17l6-6 4 4 8-8M15 7h6v6'],
     ['plan', 'Plan', 'M5 4h14v16H5zM9 9h6M9 13h6'],
@@ -20,23 +23,33 @@
       if (!app._cfg) app._cfg = FD.config.buildConfig(app.S.answers, app.S.settings, app.now());
       return app._cfg;
     },
-    balance: function () { return E.currentBalance(app.S); },
-    save: function () { app._cfg = null; if (!FD.store.save(app.S)) UI.toast('Couldn’t save — your browser storage may be full or blocked.'); },
-    commit: function () { app.save(); app.render(); },
+    balance: function () { return E.currentBalance(app.S, app.now()); },
+    /* returns true only if the data was really written (demo mode writes nothing and counts as fine) */
+    save: function () {
+      app._cfg = null;
+      var ok = FD.store.save(app.S);
+      if (!ok) UI.toast('NOT SAVED — your browser storage is full or blocked. Export a backup from Settings.', 9000);
+      return ok;
+    },
+    commit: function () { var ok = app.save(); app.render(); return ok; },
     setBalance: function (v, quiet) {
-      var net = app.S.transactions.reduce(function (s, t) { return s + (t.type === 'income' ? t.amount : -t.amount); }, 0);
-      app.S.settings.openingBalance = U.round2(v - net); app.S.settings.balanceSet = true;
+      app.S.settings.openingBalance = U.round2(v - E.netToDate(app.S, app.now())); app.S.settings.balanceSet = true;
       if (!quiet) app.commit(); else app.save();
     },
     go: function (tab) { app.ui.tab = tab; app.ui.editing = null; app.render(true); },
     goStep: function (i) { app.ui.step = Math.max(0, Math.min(i, FD.onboarding.total)); app.render(true); },
-    editQuestion: function (i) { app.ui.editing = i; app.render(true); },
+    editQuestion: function (i) {
+      app.ui.editing = i; app._editBackup = JSON.parse(JSON.stringify(app.S.answers)); // Cancel restores this
+      app.render(true);
+    },
     finishOnboarding: function () {
       if (app._pendingBalance !== undefined && app._pendingBalance !== null) app.setBalance(app._pendingBalance, true);
       app._pendingBalance = undefined;
       app.S.onboarded = true; app.ui.tab = 'home'; app.commit();
     },
     startReal: function () {
+      // never silently replace data that exists on disk (e.g. saved in another tab, or unreadable)
+      if (FD.store.hasData() && !root.confirm('This browser already has saved Money Map data. Starting over will replace it. Continue?')) return;
       app.S = FD.store.defaultState(); app.S.mode = 'real'; app._cfg = null;
       app.ui.step = 0; app.ui.editing = null; app.ui.tab = 'home'; app.ui.whatIf = { cut: {}, extraSavings: 0 };
       app.save(); app.render(true);
@@ -54,6 +67,8 @@
     },
     render: function (focusTitle) {
       var mount = doc.getElementById('app');
+      var prev = doc.activeElement, key = null;
+      if (!focusTitle && prev && /^(BUTTON|INPUT|SELECT)$/.test(prev.tagName) && mount.contains(prev)) key = prev.getAttribute('aria-label') || prev.textContent;
       mount.textContent = '';
       var S = app.S, node;
       if (S.mode === 'fresh') node = welcome();
@@ -61,13 +76,17 @@
         node = app.ui.step >= FD.onboarding.total ? FD.onboarding.summary(app) : FD.onboarding.screen(app, app.ui.step);
       } else if (app.ui.editing !== null) {
         node = FD.onboarding.screen(app, app.ui.editing, { editing: true,
-          onNext: function () { app.ui.editing = null; app.commit(); app.ui.tab = 'settings'; app.render(true); },
-          onCancel: function () { app.ui.editing = null; app.render(true); } });
+          onNext: function () { app._editBackup = null; app.ui.editing = null; app.ui.tab = 'settings'; app.commit(); app.render(true); },
+          onCancel: function () { if (app._editBackup) { app.S.answers = app._editBackup; app._editBackup = null; app._cfg = null; } app.ui.editing = null; app.render(true); } });
       } else {
         node = shell(FD.views[app.ui.tab](app));
       }
       mount.appendChild(node);
       if (focusTitle) { var t = doc.getElementById('q-title'); if (t) { t.focus({ preventScroll: true }); root.scrollTo(0, 0); } }
+      else if (key) {
+        var cands = mount.querySelectorAll('button,input,select');
+        for (var i = 0; i < cands.length; i++) { if ((cands[i].getAttribute('aria-label') || cands[i].textContent) === key) { cands[i].focus({ preventScroll: true }); break; } }
+      }
     }
   };
 
@@ -77,6 +96,7 @@
 
   function welcome() {
     return h('main', { class: 'screen welcome', id: 'main' },
+      FD.store.loadFailed() ? h('p', { class: 'note', role: 'alert' }, 'We couldn\u2019t read your saved data. A raw copy was kept in this browser (storage key fd.v1.bak) so nothing is lost yet \u2014 but starting over will replace what\u2019s in fd.v1.') : null,
       h('h1', { class: 'q-title', tabindex: '-1', id: 'q-title' }, 'Know where your money is going'),
       h('p', { class: 'q-help' }, 'Answer a few quick questions and get a simple picture of your month and where your balance is heading. No account. Your numbers stay on this device.'),
       h('div', { class: 'stack' },
@@ -98,6 +118,14 @@
     }));
     return h('div', { class: 'shell' }, banner, h('header', { class: 'topbar' }, h('span', { class: 'brand' }, 'Money Map')), content, disclaimer(), nav);
   }
+
+  // Another tab changed the data: reload it instead of overwriting it on our next save.
+  root.addEventListener('storage', function (e) {
+    if (e.key !== FD.store.KEY && e.key !== null) return;
+    if (app.S.mode === 'demo') return;
+    app.S = FD.store.load(); app._cfg = null; app.ui.editing = null;
+    app.render(); UI.toast('Updated \u2014 your data changed in another tab.');
+  });
 
   FD.app = app;
   function boot() { app.render(); }

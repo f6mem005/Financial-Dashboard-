@@ -25,7 +25,8 @@
   function pad(n) { return (n < 10 ? '0' : '') + n; }
   function iso(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
   function parseISO(s) {
-    var m = ISO_RE.exec(String(s));
+    if (typeof s !== 'string') return null;
+    var m = ISO_RE.exec(s);
     if (!m) return null;
     var y = +m[1], mo = +m[2], d = +m[3];
     var dt = new Date(y, mo - 1, d);
@@ -53,7 +54,7 @@
   /* ---------- strings ---------- */
   function cleanStr(v, max) {
     // Strip control chars; cap length. Output is only ever rendered via textContent.
-    return String(v == null ? '' : v).replace(/[\u0000-\u001f\u007f]/g, ' ').trim().slice(0, max || 80);
+    return String(v == null ? '' : v).replace(/[\u0000-\u001f\u007f-\u009f\u200b-\u200f\u2028-\u202e\u2060-\u206f\ufeff]/g, ' ').trim().slice(0, max || 80);
   }
   var idCounter = 0;
   function uid(prefix) {
@@ -64,10 +65,15 @@
   /* ---------- safe DOM builder ----------
      h('div', {class:'x', onclick:fn, 'aria-label':'..'}, child, 'text', [more])
      Strings always become text nodes (never HTML). Only on* function handlers and
-     a small attribute allow-list are applied, so user data cannot inject markup. */
+     the ATTR_OK allow-list are applied, and only allow-listed tags can be created. */
   var SVG_NS = 'http://www.w3.org/2000/svg';
+  var SVG_TAGS = /^(svg|g|path|circle|line|rect|text|polyline|polygon|title|desc)$/;
+  var HTML_TAGS = /^(div|span|p|h1|h2|h3|ul|ol|li|main|section|header|footer|nav|button|input|select|option|label|table|thead|tbody|tr|th|td|details|summary|strong|output)$/;
+  // Real allow-list: anything else is dropped (and warned about), so data can never reach href/src/style/etc.
+  var ATTR_OK = /^(class|id|type|role|tabindex|placeholder|maxlength|min|max|step|name|for|inputmode|autocomplete|accept|disabled|aria-[a-z]+|viewBox|d|cx|cy|r|x|y|x1|x2|y1|y2|width|height|points|fill|stroke-width|stroke-linecap|stroke-linejoin|text-anchor)$/;
   function h(tag, attrs) {
-    var svg = /^(svg|g|path|circle|line|rect|text|polyline|polygon|title|desc)$/.test(tag);
+    var svg = SVG_TAGS.test(tag);
+    if (!svg && !HTML_TAGS.test(tag)) throw new Error('h(): tag not allowed: ' + tag);
     var el = svg ? document.createElementNS(SVG_NS, tag) : document.createElement(tag);
     if (attrs) {
       Object.keys(attrs).forEach(function (k) {
@@ -84,7 +90,7 @@
         } else if (k === 'text') {
           el.textContent = String(v);
         } else {
-          if (/^(href|src|style|srcdoc|formaction|xlink:href)$/i.test(k)) return; // never from data
+          if (!ATTR_OK.test(k)) { if (root.console) root.console.warn('h(): attribute not allowed: ' + k); return; }
           el.setAttribute(k, v === true ? '' : String(v));
         }
       });

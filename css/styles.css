@@ -181,7 +181,7 @@ h1:focus { outline: none; }
 .linechart .minline { stroke: var(--bad); stroke-width: 1.5; stroke-dasharray: 5 4; }
 .linechart .cross { stroke: var(--text-3); stroke-width: 1; }
 .linechart .dot { fill: var(--surface); stroke: var(--text); stroke-width: 2; }
-.tip { position: absolute; top: 4px; transform: translateX(-10%); background: var(--text); color: var(--bg); padding: 4px 8px; border-radius: 8px; font-size: .8rem; pointer-events: none; white-space: nowrap; }
+.tip { position: absolute; top: 4px; transform: translateX(-50%); background: var(--text); color: var(--bg); padding: 4px 8px; border-radius: 8px; font-size: .8rem; pointer-events: none; white-space: nowrap; }
 .chart-key { font-size: .85rem; color: var(--text-2); display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
 .key-line { display: inline-block; width: 22px; height: 0; border-top: 3px solid; vertical-align: middle; }
 .key-line.ok { border-color: var(--accent); } .key-line.bad { border-color: var(--bad); }

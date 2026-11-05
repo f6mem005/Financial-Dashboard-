@@ -124,7 +124,7 @@
       if (opts.high) txt += ' (up to ' + U.money(opts.high[i].balance) + ')';
       tip.textContent = txt;
       tip.style.display = '';
-      tip.style.left = Math.max(4, Math.min(x / W * 100, 78)) + '%';
+      tip.style.left = Math.max(16, Math.min(x / W * 100, 84)) + '%';
     }
     function hide() { cross.style.display = 'none'; dot.style.display = 'none'; tip.style.display = 'none'; }
     function fromEvent(e) {

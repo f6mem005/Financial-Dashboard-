@@ -34,8 +34,9 @@
     if (irregular) {
       low = U.num(pay.low, 0, 0, 1e6); high = U.num(pay.high, 0, 0, 1e6);
       if (low <= 0 && high <= 0) { low = 1000; high = 1800; assumed.push('Income of $1,000 (slow month) to $1,800 (good month)'); }
+      else if (high <= 0) { high = low; assumed.push('No good-month income given, so we used your slow-month number for both'); }
+      else if (low <= 0) { low = high; assumed.push('No slow-month income given, so we used your good-month number for both'); }
       if (high < low) { var t = high; high = low; low = t; }
-      if (high === 0) high = low;
     } else {
       amount = U.num(pay.amount, 0, 0, 1e6);
       if (amount <= 0) { amount = DEFAULT_PAY[freq]; assumed.push('Paychecks of ' + U.money(amount) + ' (typical)'); }
@@ -50,7 +51,6 @@
     }).filter(function (o) { return o.monthly > 0; });
 
     var baseMonthly = irregular ? low : amount * perMonth(freq);
-    var highMonthly = irregular ? high : baseMonthly;
     var extraMonthly = otherIncome.reduce(function (s, o) { return s + o.monthly; }, 0);
 
     /* ---- bills / spending / annual ---- */
@@ -136,7 +136,7 @@
       style = flag.runout ? 'envelopes' : flag.dontknow ? 'track' : (flag.debt || flag.goal || flag.nocushion) ? 'fifty' : 'track';
       why.push('Budget style: ' + C.find(C.STYLES, style).label.toLowerCase() + ' (picked for you).');
     }
-    var limits = {};
+    var limits = Object.create(null);
     if (style !== 'track') variable.forEach(function (v) { limits[v.id] = v.monthly; });
 
     /* ---- home screen order ---- */
@@ -146,11 +146,12 @@
     }
     if (hero === 'goals' && !f.goals) hero = 'month';
     var order = [];
+    var all = !!settings.showAll;
     var allWidgets = [
-      ['safe', f.safeToSpend], ['calendar', f.cashCalendar], ['month', true], ['leaks', f.leaks],
-      ['bills', true], ['forecast', true], ['goals', f.goals], ['debt', f.debtPlan], ['subs', f.subscriptions]
+      ['safe', f.safeToSpend || all], ['calendar', f.cashCalendar || all], ['month', true], ['leaks', f.leaks || all],
+      ['bills', true], ['forecast', true], ['goals', f.goals || all], ['debt', f.debtPlan], ['subs', f.subscriptions]
     ];
-    var heroKey = hero === 'safe' && !f.safeToSpend ? 'month' : hero;
+    var heroKey = hero === 'safe' && !f.safeToSpend && !all ? 'month' : hero;
     order.push(heroKey);
     allWidgets.forEach(function (w) { if (w[1] && order.indexOf(w[0]) < 0) order.push(w[0]); });
 
@@ -160,7 +161,7 @@
     var minBalance = U.num(settings.minBalance, 0, 0, 1e7);
     return {
       freq: freq, irregular: irregular, payAmount: amount, payLow: low, payHigh: high, anchor: U.iso(anchor),
-      baseMonthly: baseMonthly, highMonthly: highMonthly, extraMonthly: extraMonthly, otherIncome: otherIncome,
+      baseMonthly: baseMonthly, extraMonthly: extraMonthly, otherIncome: otherIncome,
       bills: bills, variable: variable, annual: annual, debts: debts, goals: goals,
       pain: pain, features: f, suggestions: suggestions, style: style, limits: limits,
       hero: heroKey, order: order, checkin: checkin, addMode: addMode, minBalance: minBalance,

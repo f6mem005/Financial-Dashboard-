@@ -10,6 +10,14 @@ Static, dependency-free, no build step, no account, no network calls. Data stays
 
 Serve over `http://` (the Content-Security-Policy meta tag is written for `'self'`).
 
+## Hosting (security)
+
+- Host on **its own origin** (own subdomain / Netlify or Pages site), not under a shared path like `user.github.io/money-map/`:
+  `localStorage` is per-origin, so any other app on the same origin could read the saved data.
+- A `<meta>` CSP can't set `frame-ancestors`. Production headers are in `_headers` (Netlify / Cloudflare Pages format);
+  other hosts need the same headers. The app also refuses to render when framed.
+- Data is stored **unencrypted** in `localStorage` (the Settings screen says so).
+
 ## Layout
 
 | File | Role |
@@ -37,3 +45,4 @@ Serve over `http://` (the Content-Security-Policy meta tag is written for `'self
 - **Storage:** plain `localStorage` (not encrypted); JSON export but no JSON import/restore; no multi-device sync.
 - **Single checking balance**, no multiple accounts, no transfers, no currency options (USD formatting).
 - **Not financial advice.** Disclaimer in the footer of every screen; goals such as "Investing" are just savings targets.
+- **Known gaps found in review and left as-is:** "Mark paid" has no undo (delete the transaction in Activity); re-adding a goal of the same type re-attaches its earlier contributions (goal ids are `g-<type>`); debt payoff uses the balances you entered and is not reduced by payments you log; twice-monthly pay assumes 1st & 15th, 15th & last day, or d and d±15.

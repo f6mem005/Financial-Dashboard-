@@ -46,12 +46,17 @@
     return -1;
   }
 
+  /* Strict: anything we can't read unambiguously returns null (row is counted as skipped, never guessed). */
   function parseAmount(s) {
-    s = String(s == null ? '' : s).trim();
+    s = String(s == null ? '' : s).replace(/[\u2212\u2013\u2012]/g, '-').replace(/[$\u20ac\u00a3\s]/g, '');
     if (!s) return null;
-    var neg = /^\(.*\)$/.test(s) || /-\s*$/.test(s) || /^-/.test(s) || /^\$-/.test(s);
-    var n = parseFloat(s.replace(/[^0-9.]/g, ''));
-    if (!isFinite(n)) return null;
+    var neg = /^\(.*\)$/.test(s) || /^-/.test(s) || /-$/.test(s);
+    var core = s.replace(/^[(-]+|[)-]+$/g, '');
+    if (/^\d{1,3}(\.\d{3})*,\d{1,2}$/.test(core) || /^\d+,\d{1,2}$/.test(core)) core = core.replace(/\./g, '').replace(',', '.');
+    else core = core.replace(/,/g, '');
+    if (!/^(\d+(\.\d+)?|\.\d+)$/.test(core)) return null;
+    var n = parseFloat(core);
+    if (!isFinite(n) || n > 1e7) return null;
     return neg ? -n : n;
   }
 
@@ -69,14 +74,14 @@
   }
 
   var RULES = [
-    [/uber eats|doordash|grubhub|chipotle|mcdonald|starbucks|restaurant|cafe|coffee|pizza|taco|burger|dunkin/i, 'dining'],
-    [/kroger|safeway|whole foods|trader joe|aldi|walmart grocery|grocery|publix|costco|market/i, 'groceries'],
+    [/uber eats|doordash|grubhub|chipotle|mcdonald|starbucks|restaurant|\bcafe\b|coffee|pizza|taco|burger|dunkin/i, 'dining'],
+    [/kroger|safeway|whole foods|trader joe|aldi|walmart grocery|grocery|publix|costco|\bmarket\b/i, 'groceries'],
     [/shell|chevron|exxon|bp |gas station|metro|transit|uber|lyft|parking/i, 'transport'],
     [/netflix|spotify|hulu|disney|apple\.com\/bill|youtube|prime video|subscription/i, 'subs'],
     [/amazon|target|walmart|etsy|best buy|ebay/i, 'shopping'],
     [/steam|playstation|xbox|nintendo/i, 'gaming'],
-    [/petco|petsmart|vet/i, 'pets'],
-    [/rent|landlord|property mgmt/i, 'rent'],
+    [/petco|petsmart|\bvet\b/i, 'pets'],
+    [/\brent\b|landlord|property mgmt/i, 'rent'],
     [/verizon|t-mobile|at&t|mint mobile/i, 'phone'],
     [/comcast|xfinity|spectrum/i, 'internet'],
     [/electric|water util|power co|pg&e|con ed/i, 'utilities'],
@@ -100,8 +105,9 @@
     if (cDate < 0 || (cAmt < 0 && cDebit < 0 && cCredit < 0)) {
       throw new Error('Couldn’t find a Date column and an Amount column. Check the first row of your file has headers.');
     }
-    var seen = {};
-    (opts.existing || []).forEach(function (t) { seen[t.date + '|' + t.amount + '|' + t.type + '|' + t.note] = true; });
+    // Duplicates are matched against what is already stored, one-for-one, so two identical same-day purchases in one file both import.
+    var seen = Object.create(null);
+    (opts.existing || []).forEach(function (t) { var k = t.date + '|' + t.amount + '|' + t.type + '|' + t.note; seen[k] = (seen[k] || 0) + 1; });
     var out = [], skipped = 0, dupes = 0;
     for (var i = 1; i < rows.length; i++) {
       var r = rows[i];
@@ -122,8 +128,8 @@
       });
       if (!t) { skipped++; continue; }
       var k = t.date + '|' + t.amount + '|' + t.type + '|' + t.note;
-      if (seen[k]) { dupes++; continue; }
-      seen[k] = true; out.push(t);
+      if (seen[k] > 0) { seen[k]--; dupes++; continue; }
+      out.push(t);
     }
     return { txns: out, skipped: skipped, dupes: dupes };
   }

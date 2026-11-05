@@ -11,7 +11,7 @@
   function balanceForm(app, title) {
     var val = null;
     return h('div', { class: 'balance-form' },
-      UI.field(title || 'What’s in your checking account today?', UI.moneyInput(null, function (v) { val = v; }, { label: 'Current balance' })),
+      UI.field(title || 'What’s in your checking account today?', UI.moneyInput(null, function (v) { val = v; }, { label: 'Current balance', min: -1e8 }), 'Overdrawn? Enter it as a negative number, like -50.'),
       UI.btn('Save', function () { if (val === null) return; app.setBalance(val); }, 'primary'));
   }
 
@@ -28,11 +28,12 @@
       h('p', { class: 'hero-sub' }, short
         ? 'You’re short by ' + money(-r.safe) + ' before payday on ' + U.fmtDate(r.next) + '.'
         : '≈ ' + money(r.perDay) + ' a day for ' + r.days + ' day' + (r.days === 1 ? '' : 's') + ' (payday: ' + U.fmtDate(r.next) + ')'),
-      h('p', { class: 'hint' }, 'Your balance ' + money(r.balance) + ' minus ' + money(r.committed) + ' in bills due before payday.')
+      h('p', { class: 'hint' }, 'Your balance ' + money(r.balance) + (r.payToday ? ' (including today\u2019s paycheck)' : '') + ' minus ' + money(r.committed) + ' in bills due before payday.')
     ], { cls: 'hero' });
   }
 
   function calendarWidget(app) {
+    if (!app.S.settings.balanceSet) return null;
     var cal = E.cashCalendar(app.cfg(), app.S, app.now());
     var rows = cal.rows.map(function (r) {
       return h('li', { class: 'cal-row ' + r.kind },
@@ -41,11 +42,11 @@
         h('span', { class: 'cal-amt ' + (r.amount > 0 ? 'good' : '') }, r.kind === 'start' ? '' : (r.amount > 0 ? '+' : '-') + money(Math.abs(r.amount))),
         h('span', { class: 'cal-bal' + (r.balance < 0 ? ' bad' : '') }, money(r.balance)));
     });
-    return UI.card('Payday to payday', h('ul', { class: 'cal' }, rows), { });
+    return UI.card('Payday to payday', h('ul', { class: 'cal' }, rows));
   }
 
   function styleExtras(app, ms) {
-    var cfg = app.cfg(), now = app.now(), nodes = [];
+    var cfg = app.cfg(), nodes = [];
     var byCat = ms.byCategory;
     if (cfg.style === 'fifty') {
       var needs = 0, wants = 0, save = 0;
@@ -74,7 +75,6 @@
           CH.bar(Math.min(s / lim, 1), s > lim ? 'bad' : s / lim > 0.8 ? 'warn' : '', v.name + ' envelope')));
       });
     }
-    void now;
     return nodes.length ? h('div', { class: 'extras' }, nodes) : null;
   }
 
@@ -93,7 +93,7 @@
   function leaksWidget(app) {
     var list = E.leaks(app.cfg(), app.S, app.now());
     var body = list.length ? h('ol', { class: 'leaks' }, list.map(function (l) {
-      var note = l.usual === null ? 'No usual amount set' : (l.over > 5 ? 'On pace for ' + money(l.pace) + ' — ' + money(l.over) + ' over your usual ' + money(l.usual) : 'On pace for ' + money(l.pace) + ' (usual ' + money(l.usual) + ')');
+      var note = l.early ? 'Too early in the month to tell' : l.usual === null ? 'No usual amount set' : (l.over > 5 ? 'On pace for ' + money(l.pace) + ' — ' + money(l.over) + ' over your usual ' + money(l.usual) : 'On pace for ' + money(l.pace) + ' (usual ' + money(l.usual) + ')');
       return h('li', null, h('div', { class: 'leak-top' }, h('strong', null, l.name), h('span', null, money(l.amount) + ' so far')), h('div', { class: 'hint' }, note));
     })) : empty('Log a few purchases and we’ll show where your money slips away.');
     return UI.card('Top 3 spending leaks', body);
@@ -112,7 +112,12 @@
         return h('li', { class: b.overdue ? 'overdue' : '' },
           h('span', { class: 'bill-name' }, b.bill.name), h('span', { class: 'bill-due' }, b.overdue ? 'was due ' + U.fmtDate(b.due) : days === 0 ? 'due today' : days <= 3 ? 'in ' + days + ' day' + (days === 1 ? '' : 's') : U.fmtDate(b.due)),
           h('span', { class: 'bill-amt' }, money(b.bill.amount)),
-          UI.btn('Mark paid', function () { S.billsPaid[b.bill.id + ':' + U.monthKey(now)] = true; app.commit(); }, 'small', { 'aria-label': 'Mark ' + b.bill.name + ' paid' }));
+          UI.btn('Mark paid', function () {
+            // paying a bill moves real money, so record it as an expense (keeps balance and safe-to-spend honest)
+            S.transactions.push({ id: U.uid('t'), date: U.iso(now), type: 'expense', amount: b.bill.amount, category: C.find(C.CATEGORIES, b.bill.id) ? b.bill.id : 'other', note: b.bill.name + ' (marked paid)' });
+            S.billsPaid[b.bill.id + ':' + U.monthKey(now)] = true;
+            if (app.commit()) UI.toast(b.bill.name + ' marked paid \u2014 ' + money(b.bill.amount) + ' taken from your balance');
+          }, 'small', { 'aria-label': 'Mark ' + b.bill.name + ' paid' }));
       })),
       open.length > 6 ? h('p', { class: 'hint' }, '+ ' + (open.length - 6) + ' more later this month') : null,
       paid.length ? h('details', null, h('summary', null, 'Paid this month (' + paid.length + ')'), h('ul', { class: 'bill-list paid' }, paid.map(function (b) { return h('li', null, h('span', { class: 'bill-name' }, '✓ ' + b.bill.name), h('span', { class: 'bill-amt' }, money(b.bill.amount))); }))) : null
@@ -123,6 +128,7 @@
   function goalStatusEl(st) {
     if (st.status === 'done') return h('span', { class: 'pill good' }, '✓ Done');
     if (st.status === 'on') return h('span', { class: 'pill good' }, '✓ On track');
+    if (st.status === 'new') return h('span', { class: 'pill' }, 'Needs ' + money(st.needed) + '/mo');
     return h('span', { class: 'pill bad' }, 'Behind by ' + money(st.behindBy) + '/mo');
   }
   function goalsWidget(app, detailed) {
@@ -131,7 +137,7 @@
       var st = E.goalStatus(g, S, now);
       var node = h('div', { class: 'goal' },
         h('div', { class: 'goal-top' }, h('strong', null, g.name), goalStatusEl(st)),
-        CH.bar(st.pct, st.status === 'behind' ? 'warn' : 'good', g.name + ' progress'),
+        CH.bar(st.pct, st.status === 'behind' ? 'warn' : st.status === 'new' ? '' : 'good', g.name + ' progress'),
         h('div', { class: 'goal-sub' }, money(st.saved) + ' of ' + money(g.target) + ' by ' + U.fmtDate(U.parseISO(g.date)) + (st.remaining > 0 ? ' · needs ' + money(st.needed) + '/mo' : '')));
       if (detailed && st.remaining > 0) {
         var amt = null;
@@ -139,7 +145,7 @@
           UI.btn('Add', function () {
             if (!amt || amt <= 0) return;
             S.transactions.push({ id: U.uid('t'), date: U.iso(now), type: 'expense', amount: U.round2(amt), category: 'savings', note: 'Goal: ' + g.name, goalId: g.id });
-            app.commit(); UI.toast('Added ' + money(amt) + ' to ' + g.name);
+            if (app.commit()) UI.toast('Added ' + money(amt) + ' to ' + g.name);
           }, 'small')));
       }
       return node;
@@ -182,8 +188,8 @@
     var map = { safe: safeWidget, calendar: calendarWidget, month: monthWidget, leaks: leaksWidget, bills: billsWidget, forecast: forecastMini, goals: function (a) { return goalsWidget(a, false); } };
     cfg.order.forEach(function (id) {
       if (!map[id]) return;
-      if (id === 'safe' && !cfg.features.safeToSpend && !S.settings.showAll) return;
-      out.appendChild(map[id](app));
+      var node = map[id](app);
+      if (node) out.appendChild(node);
     });
     return out;
   }
@@ -278,7 +284,6 @@
     function draw() {
       body.textContent = '';
       var plan = FD.engine.debtPlan(cfg, ui.debtExtra);
-      var a = plan.avalanche, s = plan.snowball;
       var total = cfg.debts.reduce(function (t, d) { return t + d.balance; }, 0);
       body.appendChild(h('p', { class: 'summary-line' }, 'You owe ' + money(total) + ' across ' + cfg.debts.length + (cfg.debts.length === 1 ? ' debt' : ' debts') + '.'));
       var r = h('input', { type: 'range', class: 'range', min: 0, max: 500, step: 25, value: ui.debtExtra, 'aria-label': 'Extra payment per month' });
@@ -289,8 +294,8 @@
       cfg.debts.forEach(function (d) {
         if (d.aprGuess || d.minGuess) body.appendChild(h('p', { class: 'hint warn-text' }, '⚠ ' + d.name + ': using an estimated ' + (d.aprGuess ? d.apr + '% rate' : '') + (d.aprGuess && d.minGuess ? ' and ' : '') + (d.minGuess ? money(d.min) + ' minimum' : '') + '. Check your statement and update it in Settings.'));
       });
-      void a; void s;
     }
+    function cap(n) { return n > 1e9 ? 'Too large to show' : money(n); }
     function fmt(p) { return p.stuck ? 'Never at these payments' : p.months + ' mo (' + addMonths(p.months) + ')'; }
     function compare(plan) {
       var a = plan.avalanche, s = plan.snowball;
@@ -300,9 +305,9 @@
       return h('div', null,
         h('table', { class: 'compare' }, h('thead', null, h('tr', null, h('th', null, 'Strategy'), h('th', null, 'Debt-free'), h('th', null, 'Interest paid'))),
           h('tbody', null,
-            h('tr', null, h('td', null, h('strong', null, 'Avalanche'), h('div', { class: 'hint' }, 'Highest rate first')), h('td', null, fmt(a)), h('td', null, money(a.interest))),
-            h('tr', null, h('td', null, h('strong', null, 'Snowball'), h('div', { class: 'hint' }, 'Smallest balance first')), h('td', null, fmt(s)), h('td', null, money(s.interest))))),
-        h('p', { class: 'hint' }, diff > 1 ? 'Avalanche saves about ' + money(diff) + ' in interest.' + (firstS < firstA ? ' Snowball clears your first debt sooner (month ' + firstS + ' vs ' + firstA + ').' : '') : 'Both strategies cost about the same for your debts.'));
+            h('tr', null, h('td', null, h('strong', null, 'Avalanche'), h('div', { class: 'hint' }, 'Highest rate first')), h('td', null, fmt(a)), h('td', null, cap(a.interest))),
+            h('tr', null, h('td', null, h('strong', null, 'Snowball'), h('div', { class: 'hint' }, 'Smallest balance first')), h('td', null, fmt(s)), h('td', null, cap(s.interest))))),
+        h('p', { class: 'hint' }, diff > 1 && diff < 1e9 ? 'Avalanche saves about ' + money(diff) + ' in interest.' + (firstS < firstA ? ' Snowball clears your first debt sooner (month ' + firstS + ' vs ' + firstA + ').' : '') : 'Both strategies cost about the same for your debts.'));
     }
     draw();
     return UI.card('Debt payoff', body);
@@ -365,7 +370,7 @@
       box.appendChild(UI.btn('Add', function () {
         var t = FD.store.sanitizeTxn({ id: U.uid('t'), date: d.date, type: d.type, amount: d.amount, category: d.category, note: d.note });
         if (!t) { UI.toast('Enter an amount first.'); return; }
-        S.transactions.push(t); app.commit(); UI.toast('Added ' + money(t.amount, { cents: true }));
+        S.transactions.push(t); if (app.commit()) UI.toast('Added ' + money(t.amount, { cents: true }));
       }, 'primary'));
     }
     draw();
@@ -391,7 +396,7 @@
           var add = parsed.txns;
           if (S.transactions.length + add.length > FD.store.MAX_TXNS) { UI.toast('Too many transactions stored.'); return; }
           if (opts.alreadyCounted && S.settings.balanceSet) S.settings.openingBalance = U.round2(S.settings.openingBalance - net);
-          S.transactions = S.transactions.concat(add); rows = null; parsed = null; app.commit(); UI.toast('Imported ' + add.length + ' transactions.');
+          S.transactions = S.transactions.concat(add); rows = null; parsed = null; if (app.commit()) UI.toast('Imported ' + add.length + ' transactions.');
         }, 'primary'));
       }
     }
@@ -455,7 +460,7 @@
     // money basics
     var bal = null, minv = null;
     out.appendChild(UI.card('Money basics', h('div', { class: 'stack' },
-      UI.field('Current balance (checking)', UI.moneyInput(S.settings.balanceSet ? app.balance() : null, function (v) { bal = v; }, { label: 'Current balance' }), 'Tell us what’s in your account today; we track changes from your logged transactions.'),
+      UI.field('Current balance (checking)', UI.moneyInput(S.settings.balanceSet ? app.balance() : null, function (v) { bal = v; }, { label: 'Current balance', min: -1e8 }), 'Tell us what’s in your account today; we track changes from your logged transactions.'),
       UI.field('Minimum balance I want to stay above', UI.moneyInput(S.settings.minBalance || null, function (v) { minv = v; }, { label: 'Minimum balance' }), 'The forecast turns red below this. Enter 0 to clear it.'),
       UI.btn('Save', function () {
         if (bal !== null) app.setBalance(bal, true);
@@ -475,7 +480,7 @@
 
     // data
     var dataBody = h('div', { class: 'stack' },
-      h('p', { class: 'q-help' }, 'Your numbers are saved only in this browser. There’s no account, and nothing is sent anywhere. Clearing your browser data erases them, so export a backup now and then.'),
+      h('p', { class: 'q-help' }, 'Your numbers are saved only in this browser — no account, nothing is sent anywhere. They are stored unencrypted, so anyone who can open this browser profile on this device (or a browser extension with access to this site) could read them. Private windows won’t keep them, and clearing browser data erases them. Exported backups are plain-text files you’re responsible for; “Delete all my data” doesn’t remove files you already exported.'),
       UI.btn('Export my data (JSON)', function () { app.exportData(); }, 'ghost'));
     if (S.mode === 'demo') dataBody.appendChild(UI.btn('Use my own numbers', function () { app.startReal(); }, 'primary'));
     else dataBody.appendChild(UI.btn('Delete all my data', function () {
