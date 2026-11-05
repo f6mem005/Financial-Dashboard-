@@ -58,7 +58,8 @@
     while (core.length && (core[0] === '(' || core[0] === '-')) core = core.slice(1);
     while (core.length && (core[core.length - 1] === ')' || core[core.length - 1] === '-')) core = core.slice(0, -1);
     if (/^\d{1,3}(\.\d{3})*,\d{1,2}$/.test(core) || /^\d+,\d{1,2}$/.test(core)) core = core.replace(/\./g, '').replace(',', '.');
-    else if (/^[1-9]\d{0,2}(\.\d{3})+$/.test(core)) core = core.replace(/\./g, ''); // 1.234 = one thousand two hundred thirty-four
+    else if (/^[1-9]\d{0,2}\.\d{3}$/.test(core)) return null; // '1.234' could be 1,234 or 1.234: never guess with money
+    else if (/^[1-9]\d{0,2}(\.\d{3}){2,}$/.test(core)) core = core.replace(/\./g, ''); // 1.234.567 can only be thousands
     else core = core.replace(/,/g, '');
     if (!/^(\d+(\.\d+)?|\.\d+)$/.test(core)) return null;
     var n = parseFloat(core);
@@ -88,8 +89,8 @@
     [/steam|playstation|xbox|nintendo/i, 'gaming'],
     [/petco|petsmart|\bvet\b/i, 'pets'],
     [/\brent\b|landlord|property mgmt/i, 'rent'],
-    [/geico|state farm|progressive|allstate|insurance/i, 'carins'],
-    [/loan|navient|nelnet|sallie mae|student|credit card|card payment|autopay.*(visa|mastercard|amex)/i, 'debt'],
+    [/geico|state farm|progressive|allstate|auto insurance|car insurance/i, 'carins'],
+    [/navient|nelnet|sallie mae|student loan|loan payment|\bloan\b/i, 'debt'],
     [/verizon|t-mobile|at&t|mint mobile/i, 'phone'],
     [/comcast|xfinity|spectrum/i, 'internet'],
     [/electric|water util|power co|pg&e|con ed/i, 'utilities'],
@@ -110,6 +111,9 @@
     var cAmt = findCol(header, ['amount'], /debit|credit|withdraw|deposit/);
     var cDebit = findCol(header, ['debit', 'withdrawal']);
     var cCredit = findCol(header, ['credit', 'deposit']);
+    if (cDebit >= 0 && cDebit === cCredit) { if (cAmt < 0) cAmt = cDebit; cDebit = -1; cCredit = -1; } // one signed 'Debit/Credit' column
+    var cInd = cAmt >= 0 ? findCol(header, ['debit/credit', 'dr/cr', 'transaction type', 'type'], /date|category/) : -1;
+    if (cInd === cAmt) cInd = -1;
     if (cDate < 0 || (cAmt < 0 && cDebit < 0 && cCredit < 0)) {
       throw new Error('Couldn’t find a Date column and an Amount column. Check the first row of your file has headers.');
     }
@@ -123,10 +127,13 @@
       var amt;
       if (cAmt >= 0) {
         amt = parseAmount(r[cAmt]);
-        if (amt !== null && opts.spendingPositive) amt = -amt;
+        var ind = cInd >= 0 ? String(r[cInd] || '').trim().toLowerCase() : '';
+        if (amt !== null && /^(dr|debit|withdrawal)/.test(ind)) amt = -Math.abs(amt);       // an explicit indicator column wins
+        else if (amt !== null && /^(cr|credit|deposit)/.test(ind)) amt = Math.abs(amt);
+        else if (amt !== null && opts.spendingPositive) amt = -amt;
       } else {
         var dr = parseAmount(r[cDebit]), cr = parseAmount(r[cCredit]);
-        amt = cr ? Math.abs(cr) : dr ? -Math.abs(dr) : null;
+        amt = dr && cr ? null : cr ? Math.abs(cr) : dr ? -Math.abs(dr) : null;                // both filled is ambiguous: skip the row
       }
       if (!date || amt === null || amt === 0) { skipped++; continue; }
       var note = U.cleanStr(cDesc >= 0 ? r[cDesc] : '', 80);

@@ -405,7 +405,6 @@
       if (!rows) return;
       try { parsed = FD.csv.toTransactions(rows, { dateFormat: opts.dateFormat, spendingPositive: opts.spendingPositive, existing: S.transactions }); }
       catch (e) { preview.appendChild(h('p', { class: 'bad' }, e.message)); parsed = null; return; }
-      var net = parsed.txns.reduce(function (s, t) { return s + (t.type === 'income' ? t.amount : -t.amount); }, 0);
       preview.appendChild(h('p', { class: 'summary-line' }, 'Found ' + parsed.txns.length + ' new transaction' + (parsed.txns.length === 1 ? '' : 's') + (parsed.dupes ? ', ' + parsed.dupes + ' already imported' : '') + (parsed.skipped ? ', ' + parsed.skipped + ' unreadable row(s) skipped' : '') + '.'));
       if (parsed.txns.length) {
         preview.appendChild(h('ul', { class: 'txn-list' }, parsed.txns.slice(0, 5).map(txnRow)));
@@ -499,8 +498,11 @@
 
     // data
     var dataBody = h('div', { class: 'stack' },
-      h('p', { class: 'q-help' }, 'Your numbers are saved only in this browser — no account, nothing is sent anywhere. They are stored unencrypted, so anyone who can open this browser profile on this device (or a browser extension with access to this site) could read them. If your saved data ever becomes unreadable, a raw copy is kept under fd.v1.bak until you delete everything. Private windows won’t keep them, and clearing browser data erases them. Exported backups are plain-text files you’re responsible for; “Delete all my data” doesn’t remove files you already exported.'),
+      h('p', { class: 'q-help' }, 'Your numbers are saved only in this browser — no account, nothing is sent anywhere. They are stored unencrypted, so anyone who can open this browser profile on this device (or a browser extension with access to this site) could read them. If your saved data ever becomes unreadable, a raw copy is kept (keys fd.v1.bak and fd.v1.bak2) until you delete it below; copies use extra browser storage. Private windows won’t keep them, and clearing browser data erases them. Exported backups are plain-text files you’re responsible for; “Delete all my data” doesn’t remove files you already exported.'),
       UI.btn('Export my data (JSON)', function () { app.exportData(); }, 'ghost'));
+    if (S.mode !== 'demo' && FD.store.hasBackups()) dataBody.appendChild(UI.btn('Delete the unreadable-data copies (fd.v1.bak, fd.v1.bak2)', function () {
+      if (root.confirm('Delete the saved copies of unreadable data? Your current data is not touched.')) { FD.store.clearBackups(); app.render(); }
+    }, 'ghost'));
     if (S.mode === 'demo') dataBody.appendChild(UI.btn('Use my own numbers', function () { app.startReal(); }, 'primary'));
     else dataBody.appendChild(UI.btn('Delete all my data', function () {
       if (root.confirm('Delete everything stored in this browser? This can’t be undone.')) app.wipe();

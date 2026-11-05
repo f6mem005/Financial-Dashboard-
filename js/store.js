@@ -35,8 +35,10 @@
         nextPayday: U.parseISO(a.pay.nextPayday) ? a.pay.nextPayday : null };
     }
     function rows(list, fields) {
+      var seenRow = Object.create(null);
       return arr(list).filter(isObj).map(function (r) {
-        var o = { id: id(r.id, 'r'), name: U.cleanStr(r.name, 40) };
+        var rid = id(r.id, 'r'); if (seenRow[rid]) rid = U.uid('r'); seenRow[rid] = true; // two rows sharing an id would share paid-state
+        var o = { id: rid, name: U.cleanStr(r.name, 40) };
         fields.forEach(function (f) {
           if (f.t === 'num') o[f.k] = optNum(r[f.k], f.min || 0, f.max || 1e8);
           else if (f.t === 'date') o[f.k] = U.parseISO(r[f.k]) ? r[f.k] : null;
@@ -85,6 +87,7 @@
       s.settings.openingBalance = U.num(raw.settings.openingBalance, 0, -1e8, 1e8);
       s.settings.balanceSet = !!raw.settings.balanceSet;
       s.settings.balanceDate = U.parseISO(raw.settings.balanceDate) ? raw.settings.balanceDate : null;
+      if (s.settings.balanceSet && !s.settings.balanceDate) s.settings.balanceDate = U.iso(U.today()); // data saved before balanceDate existed
       s.settings.minBalance = U.num(raw.settings.minBalance, 0, 0, 1e7);
       s.settings.includeGoals = raw.settings.includeGoals !== false;
       s.settings.showAll = !!raw.settings.showAll;
@@ -108,10 +111,11 @@
   var lastLoadError = false, backupKept = false;
   function keepBackup(raw) {
     try {
-      var ls = root.localStorage;
+      var ls = root.localStorage, cut = raw.slice(0, 8e6);
+      if (ls.getItem(BAK1) === cut || ls.getItem(BAK2) === cut) return true; // this exact copy is already kept
       var slot = ls.getItem(BAK1) === null ? BAK1 : BAK2; // first copy is never overwritten; later ones replace the newest slot
-      ls.setItem(slot, raw.slice(0, 8e6));
-      return ls.getItem(slot) === raw.slice(0, 8e6);
+      ls.setItem(slot, cut);
+      return ls.getItem(slot) === cut;
     } catch (e) { return false; }
   }
   /* Unreadable data is never silently thrown away: a raw copy is kept before anything can overwrite it. */
@@ -134,6 +138,8 @@
   function hasData() { try { return !!root.localStorage.getItem(KEY); } catch (e) { return false; } }
   function loadFailed() { return lastLoadError; }
   function backupOk() { return backupKept; }
+  function hasBackups() { try { return root.localStorage.getItem(BAK1) !== null || root.localStorage.getItem(BAK2) !== null; } catch (e) { return false; } }
+  function clearBackups() { try { root.localStorage.removeItem(BAK1); root.localStorage.removeItem(BAK2); } catch (e) { /* ignore */ } backupKept = false; }
   /* returns true on success; demo data is never written to disk */
   function save(state) {
     if (state.mode !== 'real') return true;
@@ -145,6 +151,6 @@
   }
 
   FD.store = { KEY: KEY, defaultState: defaultState, sanitize: sanitize, sanitizeAnswers: sanitizeAnswers, sanitizeTxn: sanitizeTxn,
-    load: load, save: save, clear: clear, hasData: hasData, loadFailed: loadFailed, backupOk: backupOk, MAX_TXNS: MAX_TXNS };
+    load: load, save: save, clear: clear, hasData: hasData, loadFailed: loadFailed, backupOk: backupOk, hasBackups: hasBackups, clearBackups: clearBackups, MAX_TXNS: MAX_TXNS };
   if (typeof module !== 'undefined' && module.exports) module.exports = FD;
 })(typeof window !== 'undefined' ? window : globalThis);

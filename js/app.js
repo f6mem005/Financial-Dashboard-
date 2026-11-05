@@ -27,14 +27,19 @@
     /* returns true only if the data was really written (demo mode writes nothing and counts as fine) */
     save: function () {
       app._cfg = null;
+      if (app._stale) { // another tab changed the data while we were busy: never silently overwrite it
+        UI.toast('Your data changed in another tab, so this tab can\u2019t save. Reload this page to continue.', 9000);
+        return false;
+      }
       var ok = FD.store.save(app.S);
       if (!ok) UI.toast('NOT SAVED — your browser storage is full or blocked. Export a backup from Settings.', 9000);
       return ok;
     },
     commit: function () { var ok = app.save(); app.render(); return ok; },
     setBalance: function (v, quiet) {
+      // the date only anchors "bills due before this day are already in my balance"; a later correction must not erase real unpaid bills
+      if (!app.S.settings.balanceSet || !app.S.settings.balanceDate) app.S.settings.balanceDate = U.iso(app.now());
       app.S.settings.openingBalance = U.round2(v - E.netToDate(app.S, app.now())); app.S.settings.balanceSet = true;
-      app.S.settings.balanceDate = U.iso(app.now());
       if (!quiet) app.commit(); else app.save();
     },
     go: function (tab) { app.ui.tab = tab; app.ui.editing = null; app.render(true); },
@@ -140,7 +145,7 @@
     if (app.S.mode === 'demo') return;
     var busy = (app.S.mode === 'real' && !app.S.onboarded) || app.ui.editing !== null ||
       (doc.activeElement && /^(INPUT|SELECT|TEXTAREA)$/.test(doc.activeElement.tagName));
-    if (busy) { UI.toast('Your saved data changed in another tab. Finish here, then reload to see it.', 6000); return; } // don't wipe what you're typing
+    if (busy) { app._stale = true; UI.toast('Your saved data changed in another tab. Reload this page to see it \u2014 saving here is paused so nothing is overwritten.', 9000); return; } // don't wipe what you're typing
     var fresh = FD.store.load();
     if (JSON.stringify(fresh) === JSON.stringify(app.S)) return;
     app.S = fresh; app._cfg = null;

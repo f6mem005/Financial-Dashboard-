@@ -217,7 +217,7 @@ test('r2: parseAmount is linear on hostile cells (no ReDoS) and bounded', () => 
 });
 test('r2: dotted thousands read as thousands; plain decimals unaffected', () => {
   const P = FD.csv.parseAmount;
-  assert.equal(P('1.234'), 1234); assert.equal(P('1.234.567'), 1234567); assert.equal(P('0.125'), 0.125); assert.equal(P('12.50'), 12.5); assert.equal(P('1,234.50'), 1234.5);
+  assert.equal(P('1.234'), null); assert.equal(P('1.234.567'), 1234567); assert.equal(P('0.125'), 0.125); assert.equal(P('12.50'), 12.5); assert.equal(P('1,234.50'), 1234.5);
 });
 test('r2: ids that name Object.prototype members are rejected', () => {
   ['__defineGetter__', '__lookupSetter__', 'toLocaleString', 'isPrototypeOf', 'propertyIsEnumerable', '__x', 'constructor'].forEach((id) => {
@@ -290,4 +290,74 @@ test('r3: new goal stays neutral for 30 days even after a first contribution; pa
   assert.equal(E.goalStatus(cfg.goals[0], s, NOW).status, 'new');
   const late = mk({ payFreq: 'monthly', goals: [{ id: 'g2', type: 'trip', target: 1200, date: '2026-01-01', created: '2025-10-01' }] }, 0);
   const st = E.goalStatus(late.cfg.goals[0], late.s, NOW); assert.ok(st.pastDue && st.status === 'behind');
+});
+
+/* ---------- round-3 code review regression tests ---------- */
+test('r4: correcting your balance later does not erase genuinely unpaid bills', () => {
+  // mirrors app.setBalance: the anchor date is only set the first time
+  const setBalance = (s, v, now) => { if (!s.settings.balanceSet || !s.settings.balanceDate) s.settings.balanceDate = U.iso(now); s.settings.openingBalance = v - E.netToDate(s, now); s.settings.balanceSet = true; };
+  const nov25 = new Date(2026, 10, 25), nov1 = new Date(2026, 10, 1);
+  const { s, cfg } = mk({ payFreq: 'monthly', pay: { amount: 100, nextPayday: '2026-11-30' }, variable: [], bills: [{ id: 'rent', amount: 900, due: 3 }, { id: 'phone', amount: 60, due: 20 }] }, 0);
+  setBalance(s, 2000, nov1);
+  assert.deepEqual(E.overdueBills(cfg, s, nov25).map((b) => b.id), ['rent', 'phone']);
+  setBalance(s, 2000, nov25); // user corrects the balance on the 25th
+  assert.deepEqual(E.overdueBills(cfg, s, nov25).map((b) => b.id), ['rent', 'phone'], 'overdue bills were silently cleared');
+});
+test('r4: saves from before balanceDate existed are migrated, not flooded with overdue bills', () => {
+  const s = FD.store.sanitize({ mode: 'real', onboarded: true, settings: { balanceSet: true, openingBalance: 100 } });
+  assert.equal(s.settings.balanceDate, U.iso(U.today()));
+});
+test('r4: CSV rules are narrow; indicator columns and ambiguous rows handled', () => {
+  assert.equal(FD.csv.categorize('HEALTH INSURANCE PREMIUM'), 'other'); assert.equal(FD.csv.categorize('STUDENT DISCOUNT SHOP'), 'other');
+  assert.equal(FD.csv.categorize('GEICO AUTO INSURANCE'), 'carins'); assert.equal(FD.csv.categorize('NAVIENT STUDENT LOAN'), 'debt');
+  const ind = FD.csv.toTransactions(FD.csv.parse('Date,Description,Amount,Debit/Credit\n11/01/2026,RENT,900.00,DR\n11/02/2026,PAYROLL,1500.00,CR\n'), { dateFormat: 'mdy' });
+  assert.equal(ind.txns[0].type, 'expense'); assert.equal(ind.txns[1].type, 'income');
+  const both = FD.csv.toTransactions(FD.csv.parse('Date,Description,Debit,Credit\n11/01/2026,odd,5,5\n11/02/2026,ok,7,\n'), {});
+  assert.equal(both.txns.length, 1); assert.equal(both.skipped, 1);
+});
+test('r4: a yearly cost already paid today is not counted again; near-due new goals are "behind"', () => {
+  const dec1 = new Date(2026, 11, 1);
+  const { s, cfg } = mk({ payFreq: 'monthly', pay: { amount: 100, nextPayday: '2026-12-28' }, variable: [], annual: [{ id: 'carreg', amount: 600, month: 12 }] }, 2000);
+  assert.equal(E.safeToSpend(cfg, s, dec1).committed, 600);
+  s.transactions.push(tx({ date: '2026-12-01', amount: 600, category: 'carins' }));
+  assert.equal(E.safeToSpend(cfg, s, dec1).committed, 0);
+  const g = mk({ payFreq: 'monthly', goals: [{ id: 'g1', type: 'trip', target: 1200, date: '2026-11-19', created: '2026-10-31' }] }, 0);
+  assert.equal(E.goalStatus(g.cfg.goals[0], g.s, NOW).status, 'behind');
+});
+test('r4: explicit zero income is respected; blank screen gets the flagged default', () => {
+  const a = FD.config.buildConfig({ payFreq: 'varies', pay: { low: 0, high: null } }, {}, NOW);
+  assert.equal(a.payLow, 0); assert.equal(a.payHigh, 0);
+  const b = FD.config.buildConfig({ payFreq: 'varies', pay: { low: null, high: 0 } }, {}, NOW);
+  assert.equal(b.payLow, 0);
+  const c = FD.config.buildConfig({ payFreq: 'varies', pay: {} }, {}, NOW);
+  assert.equal(c.payLow, 1000); assert.ok(c.assumed.some((x) => /\$1,000/.test(x)));
+});
+test('r4: reloading the same unreadable data does not fail to keep a copy', () => {
+  const store = new Map(); let quota = 1;
+  globalThis.localStorage = { getItem: (k) => (store.has(k) ? store.get(k) : null), removeItem: (k) => store.delete(k),
+    setItem: (k, v) => { if (k.startsWith('fd.v1.bak') && quota-- <= 0) throw new Error('quota'); store.set(k, String(v)); } };
+  store.set('fd.v1', '{same corrupt');
+  FD.store.load(); assert.ok(FD.store.backupOk());
+  FD.store.load(); assert.ok(FD.store.backupOk(), 'second identical reload wrongly reported no backup');
+  delete globalThis.localStorage;
+});
+
+/* ---------- round-3 security regression tests ---------- */
+test('r5: single Debit/Credit column keeps its sign; ambiguous 3-decimal amounts are skipped, not guessed', () => {
+  const r = FD.csv.toTransactions(FD.csv.parse('Date,Description,Debit/Credit\n11/01/2026,COFFEE,-4.50\n11/02/2026,REFUND,12.00\n'), { dateFormat: 'mdy' });
+  assert.equal(r.txns[0].type, 'expense'); assert.equal(r.txns[0].amount, 4.5); assert.equal(r.txns[1].type, 'income');
+  assert.equal(FD.csv.parseAmount('1.500'), null); assert.equal(FD.csv.parseAmount('1.50'), 1.5);
+});
+test('r5: duplicate row ids in answers are made unique; emoji joiners survive cleanStr', () => {
+  const a = FD.store.sanitizeAnswers({ bills: [{ id: 'rent', amount: 1 }, { id: 'rent', amount: 2 }] });
+  assert.notEqual(a.bills[0].id, a.bills[1].id);
+  assert.equal(U.cleanStr('❤️ family \u{1F468}‍\u{1F469}'), '❤️ family \u{1F468}‍\u{1F469}');
+  assert.equal(U.cleanStr('a⠀b͏c​d'), 'a b c d');
+});
+test('r5: clearBackups removes only the backup copies', () => {
+  const store = new Map([['fd.v1', '{"v":1}'], ['fd.v1.bak', 'x'], ['fd.v1.bak2', 'y']]);
+  globalThis.localStorage = { getItem: (k) => (store.has(k) ? store.get(k) : null), setItem: (k, v) => store.set(k, String(v)), removeItem: (k) => store.delete(k) };
+  assert.ok(FD.store.hasBackups()); FD.store.clearBackups();
+  assert.ok(!FD.store.hasBackups()); assert.equal(store.get('fd.v1'), '{"v":1}');
+  delete globalThis.localStorage;
 });

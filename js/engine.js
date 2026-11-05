@@ -80,6 +80,12 @@
     });
   }
 
+  /* an expense of about this size was already logged today (used for once-a-year costs, which have no category of their own) */
+  function paidTodayAmount(state, now, amount) {
+    var iso = U.iso(now);
+    return state.transactions.some(function (t) { return t.type === 'expense' && t.date === iso && Math.abs(t.amount - amount) < 0.5; });
+  }
+
   /* ---------- this month ---------- */
   function monthSummary(cfg, state, now) {
     var received = monthTxns(state, now, 'income').reduce(function (s, t) { return s + t.amount; }, 0);
@@ -163,7 +169,7 @@
     var age = U.diffDays(start, now);
     var windowDays = Math.max(Math.min(90, age + 1), 30);
     var pace = recent / (windowDays / 30.4);
-    var status = remaining <= 0 ? 'done' : pace + 0.005 >= needed ? 'on' : (age < 30 ? 'new' : 'behind');
+    var status = remaining <= 0 ? 'done' : pace + 0.005 >= needed ? 'on' : (age < 30 && monthsLeft >= 1 ? 'new' : 'behind');
     return { goal: g, saved: saved, remaining: remaining, pct: Math.min(saved / g.target, 1), needed: needed, pace: pace,
       behindBy: status === 'behind' ? needed - pace : 0, status: status, pastDue: end < now && remaining > 0, monthsLeft: monthsLeft };
   }
@@ -223,7 +229,7 @@
       });
       if (today) overdueBills(cfg, state, now).forEach(function (b) { delta -= b.amount; events.push({ date: d, label: b.name + ' (overdue)', amount: -b.amount }); });
       cfg.annual.forEach(function (a) {
-        if (a.month === m + 1 && dom === 1) { delta -= a.amount; events.push({ date: d, label: a.name, amount: -a.amount }); }
+        if (a.month === m + 1 && dom === 1 && !(today && paidTodayAmount(state, now, a.amount))) { delta -= a.amount; events.push({ date: d, label: a.name, amount: -a.amount }); }
       });
       if (!today) delta -= varTotal / dim; // today's spending is already in your balance
       bal += delta;
@@ -259,7 +265,7 @@
         var dm = cfg.debts.reduce(function (s, x) { return s + Math.min(x.min, x.balance); }, 0);
         if (dm && !(today && loggedOn(state, d, 'expense', 'debt'))) { committed += dm; items.push({ date: new Date(d), label: 'Debt payments', amount: dm }); }
         cfg.annual.forEach(function (a) {
-          if (a.month === m + 1) { committed += a.amount; items.push({ date: new Date(d), label: a.name, amount: a.amount }); }
+          if (a.month === m + 1 && !(today && paidTodayAmount(state, now, a.amount))) { committed += a.amount; items.push({ date: new Date(d), label: a.name, amount: a.amount }); }
         });
       }
     }
