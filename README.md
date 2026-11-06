@@ -19,7 +19,7 @@ sign-in page and **none of the site's files**. `netlify/functions/login.mjs` che
 | Environment variable (Netlify > Project configuration > Environment variables) | Purpose |
 |---|---|
 | `SESSION_SECRET` | Random string, 16+ characters, that signs the session cookie |
-| `SITE_PASSCODE` | The passcode people type, 12+ characters |
+| `SITE_PASSCODE` | The passcode people type, 8+ characters (an easy one like `rakobu47` is fine because logins are rate limited; use a longer one for anything sensitive) |
 
 Mark both as **secret** and scope them to **Functions**. **It fails closed:** if either is missing or too short, nobody can open
 the site (the page says it is not set up). Never put either value in the repo.

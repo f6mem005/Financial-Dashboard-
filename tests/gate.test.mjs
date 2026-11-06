@@ -15,7 +15,7 @@ const next = () => { const c = { calls: 0, next: async () => { c.calls++; return
 const reset = () => { env.SESSION_SECRET = 'a-long-random-session-secret-0123456789'; env.SITE_PASSCODE = 'kqmv-7hxt-rwn4'; };
 
 test('auth: fails closed when a secret is missing or too short', async () => {
-  for (const [k, v] of [['SESSION_SECRET', ''], ['SESSION_SECRET', 'short'], ['SITE_PASSCODE', ''], ['SITE_PASSCODE', '12345678901'], ['SITE_PASSCODE', '            '], ['SESSION_SECRET', '                    ']]) {
+  for (const [k, v] of [['SESSION_SECRET', ''], ['SESSION_SECRET', 'short'], ['SITE_PASSCODE', ''], ['SITE_PASSCODE', '1234567'], ['SITE_PASSCODE', '            '], ['SESSION_SECRET', '                    ']]) {
     reset(); env[k] = v;
     assert.equal(A.isConfigured(), false, k + '=' + v);
     assert.equal(await A.checkPasscode('kqmv-7hxt-rwn4'), false);

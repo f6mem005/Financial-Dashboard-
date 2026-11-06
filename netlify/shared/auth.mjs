@@ -11,7 +11,7 @@ import { SITE } from "./site.mjs";
 const enc = new TextEncoder();
 export const COOKIE = "fs_gate";
 export const SESSION_SECONDS = 60 * 60 * 24 * 14;
-export const MIN_PASSCODE = 12;
+export const MIN_PASSCODE = 8;   // same minimum as the Pari Passu app; the login is rate limited to 10 tries a minute per IP
 
 const b64url = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 
