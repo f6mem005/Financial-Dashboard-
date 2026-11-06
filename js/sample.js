@@ -33,8 +33,8 @@
       ],
       pain: ['runout', 'dontknow', 'debt', 'goal'],
       goals: [
-        { id: 'g-trip', type: 'trip', target: 1200, date: iso(U.addMonths(now, 8)), created: iso(U.addDays(now, -60)), saved0: 150 },
-        { id: 'g-emergency', type: 'emergency', target: 1000, date: iso(U.addMonths(now, 10)), created: iso(U.addDays(now, -60)), saved0: 0 }
+        { id: 'g-trip', type: 'trip', target: 1200, date: iso(U.addMonths(now, 18)), created: iso(U.addDays(now, -60)), saved0: 150 },
+        { id: 'g-emergency', type: 'emergency', target: 1000, date: iso(U.addMonths(now, 24)), created: iso(U.addDays(now, -60)), saved0: 0 }
       ],
       style: 'pick', checkin: 'weekly', addMode: 'both', homeFirst: 'pick'
     };
@@ -54,7 +54,7 @@
     for (var i = 0; i <= 75; i++) {
       var d = U.addDays(start, i), dow = d.getDay(), dom = d.getDate();
       if (U.diffDays(lastPay, d) % 14 === 0 && d <= lastPay) add(d, 'income', 1450, 'pay', 'Paycheck');
-      answers.bills.forEach(function (b) { if (U.clampDay(d.getFullYear(), d.getMonth(), b.due) === dom) add(d, 'expense', b.amount, b.id, ''); });
+      answers.bills.forEach(function (b) { if (U.clampDay(d.getFullYear(), d.getMonth(), b.due) === dom) add(d, 'expense', b.id === 'gym' && d >= U.addDays(now, -50) ? 45 : b.amount, b.id, ''); }); // the gym went up to $45 recently
       if (dom === 1) add(d, 'expense', 165, 'debt', 'Loan payments');
       if ((dow === 6 || dow === 2) && r() < 0.9) add(d, 'expense', 25 + r() * 30, 'groceries', notes.groceries[Math.floor(r() * 4)]);
       if (r() < 0.45) add(d, 'expense', 12 + r() * 24, 'dining', notes.dining[Math.floor(r() * 5)]);
@@ -63,6 +63,9 @@
       if (dow === 5 && r() < 0.8) add(d, 'expense', 20 + r() * 30, 'fun', notes.fun[Math.floor(r() * 3)]);
       if (dow === 5 && d <= lastPay && U.diffDays(lastPay, d) % 14 === 0) add(d, 'expense', 50, 'savings', 'Trip fund', 'g-trip');
     }
+    // a charge that looks doubled up, so the demo can show how those are flagged
+    add(U.addDays(now, -9), 'expense', 14.99, 'dining', 'Pizza night');
+    add(U.addDays(now, -8), 'expense', 14.99, 'dining', 'Pizza night');
     // one extra payday-aligned goal deposit so the trip goal has a visible pace
     add(U.addDays(lastPay, 0), 'expense', 50, 'savings', 'Trip fund', 'g-trip');
     add(U.addDays(lastPay, -14), 'expense', 50, 'savings', 'Trip fund', 'g-trip');
@@ -70,11 +73,11 @@
     var net = txns.reduce(function (s, t) { return s + (t.type === 'income' ? t.amount : -t.amount); }, 0);
     var state = FD.store.defaultState();
     state.mode = 'demo'; state.onboarded = true; state.answers = answers; state.transactions = txns;
-    state.settings.openingBalance = U.round2(780 - net); state.settings.balanceSet = true;
-    state.settings.minBalance = 100; state.settings.balanceDate = iso(U.addDays(now, -75));
+    state.settings.openingBalance = U.round2(600 - net); state.settings.balanceSet = true;
+    state.settings.minBalance = 100; state.settings.savingsBalance = 900; state.settings.balanceDate = iso(U.addDays(now, -75));
     state.subs = [
       { id: 's1', name: 'Streaming', amount: 15.99, cycle: 'monthly' }, { id: 's2', name: 'Music', amount: 10.99, cycle: 'monthly' },
-      { id: 's3', name: 'Cloud storage', amount: 2.99, cycle: 'monthly' }, { id: 's4', name: 'Game pass', amount: 8, cycle: 'monthly' }
+      { id: 's3', name: 'Cloud storage', amount: 2.99, cycle: 'monthly' }, { id: 's4', name: 'Game pass', amount: 8, cycle: 'monthly' }, { id: 's5', name: 'Second music app', amount: 9.99, cycle: 'monthly' }
     ];
     return state;
   }

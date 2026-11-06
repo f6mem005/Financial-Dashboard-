@@ -43,13 +43,15 @@
   }
 
   /* ---------- balance line chart ----------
-     opts: {points, high (optional range points), min, label}
+     opts: {points, high (optional range points), low (optional: with high, the band runs from low to high), min, label,
+            xLabel(p, i) -> text or null (default: month names), tipLabel(p, i) -> hover text (default: date and balance), noDanger: true to skip the tint below the minimum}
      Segments below `min` are drawn red and the zone below is tinted; a dashed line marks the minimum. */
   function lineChart(opts) {
     var pts = opts.points, W = 640, H = 280, L = 52, R = 14, T = 12, B = 30;
     var min = opts.min || 0;
     var all = pts.map(function (p) { return p.balance; });
     if (opts.high) opts.high.forEach(function (p) { all.push(p.balance); });
+    if (opts.low) opts.low.forEach(function (p) { all.push(p.balance); });
     all.push(0, min);
     var lo = Math.min.apply(null, all), hi = Math.max.apply(null, all);
     var pad = (hi - lo) * 0.08 || 50; lo -= pad; hi += pad;
@@ -67,15 +69,15 @@
     // x ticks (month starts)
     var lastLabelX = -99;
     pts.forEach(function (p, i) {
-      if (p.date.getDate() === 1 || i === 0) {
-        var x = X(i);
-        if (x - lastLabelX < 48) return;
-        lastLabelX = x;
-        svg.appendChild(h('text', { x: x, y: H - 8, 'text-anchor': i === 0 ? 'start' : 'middle', class: 'axis' }, U.MONTHS[p.date.getMonth()] + (p.date.getMonth() === 0 ? " '" + String(p.date.getFullYear()).slice(2) : '')));
-      }
+      var lab = opts.xLabel ? opts.xLabel(p, i) : (p.date.getDate() === 1 || i === 0 ? U.MONTHS[p.date.getMonth()] + (p.date.getMonth() === 0 ? " '" + String(p.date.getFullYear()).slice(2) : '') : null);
+      if (lab === null || lab === undefined) return;
+      var x = X(i);
+      if (x - lastLabelX < 48) return;
+      lastLabelX = x;
+      svg.appendChild(h('text', { x: x, y: H - 8, 'text-anchor': i === 0 ? 'start' : 'middle', class: 'axis' }, lab));
     });
     // danger zone
-    if (lo < min) {
+    if (lo < min && !opts.noDanger) {
       svg.appendChild(h('rect', { x: L, y: Y(min), width: W - L - R, height: Math.max(0, Y(lo) - Y(min)), class: 'danger-zone' }));
     }
     svg.appendChild(h('line', { x1: L, x2: W - R, y1: Y(min), y2: Y(min), class: min > 0 ? 'minline' : 'zeroline' }));
@@ -84,7 +86,7 @@
     // range band (irregular income)
     if (opts.high) {
       var up = opts.high.map(function (p, i) { return X(i) + ',' + Y(p.balance); });
-      var down = pts.map(function (p, i) { return X(i) + ',' + Y(p.balance); }).reverse();
+      var down = (opts.low || pts).map(function (p, i) { return X(i) + ',' + Y(p.balance); }).reverse();
       svg.appendChild(h('polygon', { points: up.concat(down).join(' '), class: 'band' }));
     }
     // the line, split into normal / below-minimum runs
@@ -120,8 +122,8 @@
       var p = pts[i], x = X(i), y = Y(p.balance);
       cross.setAttribute('x1', x); cross.setAttribute('x2', x); dot.setAttribute('cx', x); dot.setAttribute('cy', y);
       cross.style.display = ''; dot.style.display = '';
-      var txt = U.fmtDate(p.date) + ': ' + U.money(p.balance);
-      if (opts.high) txt += ' (up to ' + U.money(opts.high[i].balance) + ')';
+      var txt = opts.tipLabel ? opts.tipLabel(p, i) : U.fmtDate(p.date) + ': ' + U.money(p.balance);
+      if (opts.high && !opts.tipLabel) txt += ' (up to ' + U.money(opts.high[i].balance) + ')';
       tip.textContent = txt;
       tip.style.display = '';
       tip.style.left = Math.max(16, Math.min(x / W * 100, 84)) + '%';

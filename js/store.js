@@ -15,7 +15,7 @@
     return {
       v: 1, mode: 'fresh', // 'fresh' | 'demo' | 'real'
       answers: {}, onboarded: false,
-      settings: { openingBalance: 0, balanceSet: false, balanceDate: null, minBalance: 0, includeGoals: true, showAll: false },
+      settings: { openingBalance: 0, balanceSet: false, balanceDate: null, balanceChecked: null, minBalance: 0, includeGoals: true, showAll: false, savingsBalance: null, dismissed: [] },
       transactions: [], billsPaid: {}, subs: []
     };
   }
@@ -54,7 +54,7 @@
     if (Array.isArray(a.annual)) out.annual = rows(a.annual, [{ k: 'amount', t: 'num' }, { k: 'month', t: 'num', min: 1, max: 12 }]);
     if (Array.isArray(a.debts)) out.debts = rows(a.debts, [{ k: 'type', t: 'str' }, { k: 'balance', t: 'num' }, { k: 'min', t: 'num' }, { k: 'apr', t: 'num', max: 100 }, { k: 'aprKnown', t: 'bool' }]);
     if (Array.isArray(a.goals)) out.goals = rows(a.goals, [{ k: 'type', t: 'str' }, { k: 'target', t: 'num' }, { k: 'date', t: 'date' }, { k: 'created', t: 'date' }, { k: 'saved0', t: 'num' }]);
-    if (Array.isArray(a.pain)) out.pain = a.pain.filter(function (p) { return !!C.find(C.PAIN, p); });
+    if (Array.isArray(a.pain)) out.pain = a.pain.slice(0, 200).filter(function (p, i, all) { return !!C.find(C.PAIN, p) && all.indexOf(p) === i; }).slice(0, 20);
     ['style', 'checkin', 'addMode', 'homeFirst'].forEach(function (k) {
       var list = { style: C.STYLES, checkin: C.CHECKIN, addMode: C.ADDMODE, homeFirst: C.HOMEFIRST }[k];
       if (typeof a[k] === 'string' && C.find(list, a[k])) out[k] = a[k];
@@ -88,9 +88,13 @@
       s.settings.balanceSet = !!raw.settings.balanceSet;
       s.settings.balanceDate = U.parseISO(raw.settings.balanceDate) ? raw.settings.balanceDate : null;
       if (s.settings.balanceSet && !s.settings.balanceDate) { s.settings.balanceDate = U.iso(U.today()); migrated = true; } // data saved before balanceDate existed
+      s.settings.balanceChecked = U.parseISO(raw.settings.balanceChecked) ? raw.settings.balanceChecked : null;   // when you last confirmed the balance
       s.settings.minBalance = U.num(raw.settings.minBalance, 0, 0, 1e7);
       s.settings.includeGoals = raw.settings.includeGoals !== false;
       s.settings.showAll = !!raw.settings.showAll;
+      var sb = raw.settings.savingsBalance;
+      s.settings.savingsBalance = sb === null || sb === undefined || sb === '' ? null : U.num(sb, 0, 0, 1e8);   // optional: savings you already have
+      s.settings.dismissed = arr(raw.settings.dismissed, 100).filter(function (d) { return typeof d === 'string' && /^[a-z]+:[A-Za-z0-9._:-]{1,60}$/.test(d); }); // suggestions you waved away
     }
     var seenIds = Object.create(null);
     s.transactions = arr(raw.transactions, MAX_TXNS).map(sanitizeTxn).filter(Boolean).map(function (t) {

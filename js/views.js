@@ -209,6 +209,8 @@
       var node = map[id](app);
       if (node) out.appendChild(node);
     });
+    var tz = FD.views.ideasTeaser && app.S.mode !== 'fresh' ? FD.views.ideasTeaser(app) : null;
+    if (tz) out.appendChild(tz);
     return out;
   }
 
@@ -361,7 +363,7 @@
     if (cfg.features.goals || all || cfg.suggestions.length) { out.appendChild(goalsWidget(app, true)); any = true; }
     if (cfg.features.debtPlan) { out.appendChild(debtCard(app)); any = true; }
     else if (all) out.appendChild(UI.card('Debt payoff', empty('No debts added.')));
-    if (cfg.features.subscriptions || all) { out.appendChild(subsCard(app)); any = true; }
+    if (cfg.features.subscriptions || all || S.subs.length) { out.appendChild(subsCard(app)); any = true; }
     if (!any) out.appendChild(empty('Nothing to plan yet. Add goals, debts or subscriptions in Settings → Edit answers.'));
     return out;
   }
@@ -476,13 +478,15 @@
     if (S.mode === 'demo') out.appendChild(h('p', { class: 'note' }, 'You’re looking at sample data. Changes here aren’t saved.'));
 
     // money basics
-    var bal = null, minv = null;
+    var bal = null, minv = null, sav; // sav: undefined = untouched, null = cleared
     out.appendChild(UI.card('Money basics', h('div', { class: 'stack' },
       UI.field('Current balance (checking)', UI.moneyInput(S.settings.balanceSet ? app.balance() : null, function (v) { bal = v; }, { label: 'Current balance', min: -1e8 }), 'Tell us what’s in your account today; we track changes from your logged transactions.'),
+      UI.field('Savings I already have (optional)', UI.moneyInput(S.settings.savingsBalance, function (v) { sav = v; }, { label: 'Savings I already have' }), 'Used by the Ideas tab to see how close you are to a cushion. Clear the box and save to go back to \u201cnot given\u201d.'),
       UI.field('Minimum balance I want to stay above', UI.moneyInput(S.settings.minBalance || null, function (v) { minv = v; }, { label: 'Minimum balance' }), 'The forecast turns red below this. Enter 0 to clear it.'),
       UI.btn('Save', function () {
         if (bal !== null) app.setBalance(bal, true);
         if (minv !== null) S.settings.minBalance = minv;
+        if (sav !== undefined) S.settings.savingsBalance = sav;
         var od = E.overdueBills(app.cfg(), S, app.now()).length;
         if (app.commit()) UI.toast(od ? 'Saved. ' + od + ' bill' + (od === 1 ? '' : 's') + ' still show as unpaid \u2014 tap \u201cAlready paid\u201d on Home if your new balance already includes ' + (od === 1 ? 'it' : 'them') + '.' : 'Saved', od ? 8000 : 3500);
       }, 'primary'),
@@ -497,16 +501,19 @@
 
     if (cfg.assumed.length) out.appendChild(UI.card('Estimates in use', h('ul', null, cfg.assumed.map(function (a) { return h('li', null, a); }))));
 
+    // moving to another device
+    out.appendChild(FD.transfer.exportCard(app));
+    out.appendChild(UI.card('Restore from a backup', FD.transfer.restoreCard(app)));
+
     // data
     var dataBody = h('div', { class: 'stack' },
-      h('p', { class: 'q-help' }, 'Your numbers are saved only in this browser — no account, nothing is sent anywhere. They are stored unencrypted, so anyone who can open this browser profile on this device (or a browser extension with access to this site) could read them. If your saved data ever becomes unreadable, a raw copy is kept (keys fd.v1.bak and fd.v1.bak2) until you delete it below; copies use extra browser storage. Private windows won’t keep them, and clearing browser data erases them. Exported backups are plain-text files you’re responsible for; “Delete all my data” doesn’t remove files you already exported.'),
-      UI.btn('Export my data (JSON)', function () { app.exportData(); }, 'ghost'));
+      h('p', { class: 'q-help' }, 'Your numbers are saved only in this browser \u2014 no account, nothing is sent anywhere. They are stored unencrypted, so anyone who can open this browser profile on this device (or a browser extension with access to this site) could read them. If your saved data ever becomes unreadable, a raw copy is kept (keys fd.v1.bak and fd.v1.bak2) until you delete it below; copies use extra browser storage. Private windows won\u2019t keep them, and clearing browser data erases them. Backup files are yours to look after: a plain one can be read by anyone who gets it, a locked one only with its passphrase. \u201cDelete all my data\u201d doesn\u2019t remove files you already saved.'));
     if (S.mode !== 'demo' && FD.store.hasBackups()) dataBody.appendChild(UI.btn('Delete the unreadable-data copies (fd.v1.bak, fd.v1.bak2)', function () {
       if (root.confirm('Delete the saved copies of unreadable data? Your current data is not touched.')) { FD.store.clearBackups(); app.render(); }
     }, 'ghost'));
     if (S.mode === 'demo') dataBody.appendChild(UI.btn('Use my own numbers', function () { app.startReal(); }, 'primary'));
     else dataBody.appendChild(UI.btn('Delete all my data', function () {
-      if (root.confirm('Delete everything stored in this browser? This can’t be undone.')) app.wipe();
+      if (root.confirm('Delete everything stored in this browser? This can\u2019t be undone.')) app.wipe();
     }, 'danger'));
     out.appendChild(UI.card('Your data', dataBody));
     return out;

@@ -30,8 +30,10 @@ GitHub, so a push does not deploy. If that ever changes, a push could publish, s
 
 ## Testing
 
-- Unit tests: `node --test tests/run.test.js` (engine, config mapping, CSV, store). Every fix to forecast,
-  safe-to-spend, bill, goal or debt logic needs a regression test.
+- Unit tests: `node --test tests/*.test.js` (engine, config mapping, CSV, store, ideas, backup; pass explicit globs, a
+  bare directory fails). Every fix to forecast, safe-to-spend, bill, goal, debt, suggestion or backup logic needs a
+  regression test.
+- Browser test: `tests/browser/ideas-flow.js` (needs Playwright and the repo served on port 8912; see the top of the file).
 - In the browser: serve the repo root (`python3 -m http.server`) and drive it with the preinstalled Chromium and
   Playwright. Check phone-sized and desktop screens, light and dark mode, the demo, and a real onboarding run
   (including skipping every question).
@@ -51,7 +53,10 @@ GitHub, so a push does not deploy. If that ever changes, a push could publish, s
   needs a migration. Unreadable or newer-version data is backed up, never overwritten.
 - Money math must stay honest: paying a bill moves real money (it is recorded as an expense), nothing is
   deducted after a goal or debt is finished, and estimates are labelled as estimates.
-- Not financial advice: keep the disclaimer on every screen and never recommend specific investments.
+- Not financial advice: keep the disclaimer on every screen and never recommend specific investments. The growth
+  illustration may only use generic fund types (no tickers, providers or brands) and must stay labelled as an illustration.
+- Backup files are untrusted input: they only enter through `FD.backup.open`, which passes them through `store.sanitize`.
+  Never read a file's contents any other way, and keep the PBKDF2 iteration bounds.
 - Never put secrets, tokens or API keys in the repo.
 
 ## Git
