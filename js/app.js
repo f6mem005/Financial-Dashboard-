@@ -156,7 +156,7 @@
     var hero = h('header', { class: 'landing-hero' }, h('div', { class: 'landing-in' },
       h('div', { class: 'brand-row' }, logo(), h('div', { class: 'brand-text' }, h('span', { class: 'brand-name' }, 'Finance Sense'), h('span', { class: 'brand-tag' }, 'Your money, made simple'))),
       h('h1', { class: 'landing-title', tabindex: '-1', id: 'q-title' }, inApp ? 'How Finance Sense works' : 'Know where your money is going'),
-      h('p', { class: 'landing-intro' }, 'Finance Sense is a simple money dashboard for people who have never budgeted before. Answer a few quick questions and it shows what is safe to spend until payday, which bills are coming and where your balance is heading, then suggests how much you could set aside. No account, no bank connection, and your numbers stay on this device.'),
+      h('p', { class: 'landing-intro' }, 'Finance Sense is a simple money dashboard that makes managing your money clearer and easier. Answer a few quick questions and it shows what is safe to spend until payday, which bills are coming and where your balance is heading, then suggests how much you could set aside. No account, no bank connection, and your numbers stay on this device.'),
       !inApp ? h('p', { class: 'landing-note' }, resuming ? 'Your earlier answers are saved. You can change or skip any question.' : 'Takes about 3 minutes. You can skip any question.') : null,
       h('div', { class: 'landing-links' },
         !inApp ? link('Look at a demo first', function () { app.startDemo(); }) : null,
