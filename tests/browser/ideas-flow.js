@@ -25,8 +25,32 @@ const out = (k, v) => { if (!v) failed++; console.log((v ? 'PASS ' : 'FAIL ') + 
   /* ---------- first screen ---------- */
   await p.goto(URL);
   out('first screen is How it works: five steps, no tab bar', (await p.locator('ol.how li').count()) === 5 && (await p.locator('.tabs').count()) === 0 && /How it works/.test(await txt()));
-  out('first screen keeps Set up and Demo buttons and the not-advice note', (await p.locator('button:has-text("Set up with my numbers")').count()) === 1 && (await p.locator('button:has-text("Look at a demo first")').count()) === 1 && /not financial advice/i.test(await txt()));
+  out('first screen keeps Set up and Demo buttons and the not-advice note', (await p.locator('button:has-text("Get started")').count()) === 2 && (await p.locator('button:has-text("Look at a demo first")').count()) === 1 && /not financial advice/i.test(await txt()));
   out('restore option is on the first screen', (await p.locator('summary:has-text("Restore from a backup")').count()) === 1);
+
+  // landing page first, Start leads to the questions (also for someone who left setup half done)
+  out('the Start button is visible without scrolling (phone height)', await p.evaluate(() => { const b = [...document.querySelectorAll('button')].find((x) => x.textContent === 'Get started'); return b.getBoundingClientRect().bottom < innerHeight; }));
+  await p.click('button:has-text("Get started")');
+  out('Get started takes a new visitor to question 1', /1 of 13/.test(await txt()) && /How often do you get paid/.test(await txt()));
+  await p.click('button:has-text("Every 2 weeks")');
+  await p.reload();
+  out('someone with setup half done still lands on How it works first', /How it works/.test(await txt()) && (await p.locator('button:has-text("Continue setup")').count()) === 2 && (await p.locator('summary:has-text("Restore from a backup")').count()) === 1 && !/1 of 13/.test(await txt()) && /earlier answers are saved/.test(await txt()));
+  await p.click('button:has-text("Continue setup")');
+  out('Continue setup goes to the questions with the saved answer kept', /1 of 13/.test(await txt()) && (await p.locator('.option.on:has-text("Every 2 weeks")').count()) === 1);
+  await p.reload(); await p.click('button:has-text("Start over with a blank setup")');
+  out('Start over gives a blank first question', /1 of 13/.test(await txt()) && (await p.locator('.option.on').count()) === 0);
+  await p.evaluate(() => localStorage.clear());
+  // unreadable saved data + restoring an unfinished backup: straight to the questions, no stale "delete unreadable data" notice
+  await p.evaluate(() => localStorage.setItem('fd.v1', '{not json'));
+  await p.reload();
+  out('unreadable data shows its notice on the landing page', /couldn.t read your saved data/.test(await txt()));
+  const half = await p.evaluate(async () => { const s = FD.store.defaultState(); s.mode = 'real'; s.answers = { payFreq: 'weekly' }; return (await FD.backup.make(s, '')).text; });
+  await p.click('summary:has-text("Restore from a backup")');
+  await p.setInputFiles('input[aria-label="Choose a Finance Sense backup file"]', { name: 'half.json', mimeType: 'application/json', buffer: Buffer.from(half) });
+  await p.waitForSelector('button:has-text("Replace this device"), button:has-text("Use this backup")');
+  await p.click('button:has-text("Replace this device"), button:has-text("Use this backup")');
+  out('restoring an unfinished backup goes straight to the questions with its answer', /1 of 13/.test(await txt()) && (await p.locator('.option.on:has-text("Every week")').count()) === 1 && !/couldn.t read your saved data/.test(await txt()));
+  await p.evaluate(() => localStorage.clear()); await p.reload();
 
   /* ---------- demo: home teaser and Ideas ---------- */
   await p.click('button:has-text("Look at a demo first")');
@@ -166,7 +190,7 @@ const out = (k, v) => { if (!v) failed++; console.log((v ? 'PASS ' : 'FAIL ') + 
   await tab('Activity');
   out('a How it works button is in the top bar of every screen', (await p.locator('header.topbar button:has-text("How it works")').count()) === 1);
   await p.click('header.topbar button:has-text("How it works")');
-  out('How it works opens from the top bar and has a Back button', /How Finance Sense works/.test(await txt()) && (await p.locator('button:has-text("Back")').count()) === 1 && (await p.locator('.tabs').count()) === 0);
+  out('How it works opens from the top bar and has a Back button', /How Finance Sense works/.test(await txt()) && (await p.locator('button:has-text("Back")').count()) === 2 && (await p.locator('.tabs').count()) === 0);
   await p.click('button:has-text("Back")');
   out('Back returns to the screen you were on', /Activity/.test(await p.textContent('h1')));
   await tab('Settings');

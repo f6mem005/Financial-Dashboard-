@@ -17,7 +17,7 @@
 
   var app = {
     S: FD.store.load(),
-    ui: { tab: 'home', how: false, step: 0, editing: null, horizon: 3, whatIf: { cut: Object.create(null), extraSavings: 0 }, debtExtra: 50, txnLimit: 50 },
+    ui: { tab: 'home', how: false, started: false, step: 0, editing: null, horizon: 3, whatIf: { cut: Object.create(null), extraSavings: 0 }, debtExtra: 50, txnLimit: 50 },
     _cfg: null, _pendingBalance: undefined,
     now: function () { return U.today(); },
     cfg: function () {
@@ -60,7 +60,7 @@
       if (FD.store.hasData() && !root.confirm('This browser already has saved Finance Sense data. Starting over will replace it. Continue?')) return;
       app._stale = false; // only after the confirm above: cancelling must not mark an out-of-date tab as current
       app.S = FD.store.defaultState(); app.S.mode = 'real'; app._cfg = null;
-      app.ui.step = 0; app.ui.editing = null; app.ui.tab = 'home'; app.ui.how = false; app.ui.proj = null; app.ui.whatIf = { cut: Object.create(null), extraSavings: 0 };
+      app.ui.step = 0; app.ui.editing = null; app.ui.tab = 'home'; app.ui.how = false; app.ui.proj = null; app.ui.started = true; app.ui.whatIf = { cut: Object.create(null), extraSavings: 0 };
       app.save(); app.render(true);
     },
     startDemo: function () {
@@ -71,7 +71,7 @@
     /* a backup the person chose to restore (already validated by FD.backup): it replaces what is on this device */
     replaceState: function (state) {
       app._stale = false; app.S = state; app._cfg = null;
-      app.ui.step = 0; app.ui.editing = null; app.ui.tab = 'home'; app.ui.how = false; app.ui.proj = null; app.ui.whatIf = { cut: Object.create(null), extraSavings: 0 };
+      app.ui.step = 0; app.ui.editing = null; app.ui.tab = 'home'; app.ui.how = false; app.ui.proj = null; app.ui.started = true; app.ui.whatIf = { cut: Object.create(null), extraSavings: 0 };
       var ok = app.save(); app.render(true);
       if (ok) UI.toast('Backup restored on this device.');
     },
@@ -90,6 +90,7 @@
       var S = app.S, node;
       if (app.ui.how && S.mode !== 'fresh') node = howItWorks(true);
       else if (S.mode === 'fresh') node = howItWorks(false);
+      else if (S.mode === 'real' && !S.onboarded && !app.ui.started) node = howItWorks(false, true);   // setup not finished: show the landing page first, Start leads to the questions
       else if (S.mode === 'real' && !S.onboarded) {
         node = app.ui.step >= FD.onboarding.total ? FD.onboarding.summary(app) : FD.onboarding.screen(app, app.ui.step);
       } else if (app.ui.editing !== null) {
@@ -124,8 +125,22 @@
   ];
 
   /* The first screen for new visitors, and also reachable later from Settings (inApp = true). */
-  function howItWorks(inApp) {
+  function howItWorks(inApp, resuming) {
     var S = app.S;
+    function startBtn() {
+      return resuming
+        ? UI.btn('Continue setup', function () { app.ui.started = true; app.ui.step = 0; app.render(true); }, 'primary big')
+        : UI.btn('Get started', function () { app.startReal(); }, 'primary big');
+    }
+    // the main buttons sit at the top so nobody has to scroll to find Start; the main one is repeated after the text
+    function actions(withExtras) {
+      if (inApp) return h('div', { class: 'stack' }, UI.btn('Back', function () { app.ui.how = false; app.render(true); }, 'primary big'),
+        withExtras && S.mode === 'demo' ? UI.btn('Use my numbers', function () { app.startReal(); }, 'ghost big') : null);
+      return h('div', { class: 'stack' }, startBtn(),
+        withExtras ? UI.btn('Look at a demo first', function () { app.startDemo(); }, 'ghost big') : null,
+        withExtras && resuming ? UI.btn('Start over with a blank setup', function () { app.startReal(); }, 'link') : null,
+        withExtras ? h('details', { class: 'restore' }, h('summary', null, 'Already use Finance Sense on another device? Restore from a backup'), FD.transfer.restoreCard(app)) : null);
+    }
     return h('main', { class: 'screen welcome', id: 'main' },
       !inApp && FD.store.loadFailed() ? h('div', { class: 'note', role: 'alert' },
         h('p', null, FD.store.backupOk()
@@ -134,21 +149,15 @@
         UI.btn('Delete the unreadable data and any copies', function () { if (root.confirm('Delete the unreadable data and its backup copies? This can’t be undone.')) app.wipe(); }, 'small danger')) : null,
       h('h1', { class: 'q-title', tabindex: '-1', id: 'q-title' }, inApp ? 'How Finance Sense works' : 'Know where your money is going'),
       h('p', { class: 'q-help' }, 'Finance Sense turns a few answers about your money into a plain picture of your month, then shows what you could do with what is left. No account, and your numbers stay on this device.'),
+      actions(true),
+      !inApp ? h('p', { class: 'hint' }, resuming ? 'Your earlier answers are saved. You can change or skip any question.' : 'Takes about 3 minutes. You can skip any question.') : null,
       h('h2', { class: 'how-title' }, 'How it works'),
       h('ol', { class: 'how' }, STEPS.map(function (st, i) {
         return h('li', null, h('span', { class: 'how-n', 'aria-hidden': 'true' }, String(i + 1)), h('div', null, h('strong', null, st[0]), h('p', { class: 'how-text' }, st[1])));
       })),
       h('div', { class: 'card' }, h('h2', null, 'What it isn’t'),
         h('p', { class: 'q-help' }, 'It is not financial advice. It doesn’t connect to your bank, and it doesn’t recommend specific investments or products. Forecasts and growth illustrations are estimates built from what you enter, not promises.')),
-      inApp
-        ? h('div', { class: 'stack' },
-          UI.btn('Back', function () { app.ui.how = false; app.render(true); }, 'primary big'),
-          S.mode === 'demo' ? UI.btn('Use my numbers', function () { app.startReal(); }, 'ghost big') : null)
-        : h('div', { class: 'stack' },
-          UI.btn('Set up with my numbers', function () { app.startReal(); }, 'primary big'),
-          UI.btn('Look at a demo first', function () { app.startDemo(); }, 'ghost big'),
-          h('details', { class: 'restore' }, h('summary', null, 'Already use Finance Sense on another device? Restore from a backup'), FD.transfer.restoreCard(app))),
-      inApp ? null : h('p', { class: 'hint' }, 'Takes about 3 minutes. You can skip any question.'),
+      actions(false),
       disclaimer());
   }
 
