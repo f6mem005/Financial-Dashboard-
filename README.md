@@ -6,9 +6,42 @@ Static, dependency-free, no build step, no account, no network calls. Data stays
 ## Run
 
     python3 -m http.server 8000      # then open http://localhost:8000
-    node --test tests/*.test.js      # engine / config / csv / store / ideas / backup tests
+    node --test tests/*.test.js tests/*.test.mjs   # engine / config / csv / store / ideas / backup / sign-in gate tests
 
 Serve over `http://` (the Content-Security-Policy meta tag is written for `'self'`).
+
+## Sign-in passcode (the whole site)
+
+The same design as the Pari Passu app, with one shared passcode instead of people accounts. A small **gate**
+(`netlify/edge-functions/gate.ts`) runs in front of every request. Without a valid session cookie the browser is sent the
+sign-in page and **none of the site's files**. `netlify/functions/login.mjs` checks the passcode and sets the session cookie.
+
+| Environment variable (Netlify > Project configuration > Environment variables) | Purpose |
+|---|---|
+| `SESSION_SECRET` | Random string, 16+ characters, that signs the session cookie |
+| `SITE_PASSCODE` | The passcode people type, 12+ characters |
+
+Mark both as **secret** and scope them to **Functions**. **It fails closed:** if either is missing or too short, nobody can open
+the site (the page says it is not set up). Never put either value in the repo.
+
+**Order matters:** set both variables in Netlify BEFORE the first deploy that includes the gate, and use a different `SESSION_SECRET` and
+passcode on every site. Changing a variable needs a redeploy to take effect. Deployed without them, the site refuses everyone
+(the page says it is "not set up yet"). The gate also keeps the cookie tied to one site, so sites that share a secret still cannot
+open each other. After a deploy, check unsigned requests: `curl -sI <site>/` should show exactly one `content-security-policy`
+header and a 401, and `curl -s --path-as-is -o /dev/null -w '%{http_code}' '<site>/auth/..%2findex.html'` should not return the page.
+
+- The session is a signed cookie (HMAC-SHA256), `HttpOnly; Secure; SameSite=Lax` (Lax so a link from an email still arrives signed in), 14 days. Changing `SITE_PASSCODE` signs everyone out.
+- The passcode is compared through HMACs of both values (no timing leak). The login function is rate limited to 10 tries a minute per IP.
+- Only the site's own page can sign in (an `Origin` from another site is refused).
+- To change the passcode: edit `SITE_PASSCODE` in Netlify and redeploy (or trigger a deploy). Tell people the new one.
+- The wording on the sign-in page is in `netlify/shared/site.mjs`.
+- Test locally with `node tests/gate-server.mjs 8913` (the real gate, login and site files together; set both variables first).
+
+## What to publish
+
+Stage exactly: `index.html`, `_headers`, `css/`, `js/`, `auth/gate.js`, `auth/gate.css`, `netlify.toml`, `netlify/edge-functions/gate.ts`,
+`netlify/functions/login.mjs`, `netlify/shared/auth.mjs`, `netlify/shared/site.mjs`. **Not** `tests/`, `README.md`, `CLAUDE.md`, `.git`.
+Your numbers still never leave the browser; the only new request is the passcode sent to this site's own login.
 
 ## Hosting (security)
 
@@ -28,6 +61,7 @@ Serve over `http://` (the Content-Security-Policy meta tag is written for `'self
 | `js/store.js` | State shape, field-by-field validation of anything loaded, persistence |
 | `js/ideas.js` | **Suggestions** from your own numbers: how much you could set aside, a growth illustration for generic fund types, ways to spend less, duplicate finder, "what changed" check |
 | `js/backup.js` | Backup file for moving to another device: plain or passphrase-locked (AES-256-GCM, PBKDF2), re-validated on the way in |
+| `netlify/`, `auth/` | The sign-in gate (edge function), login function, shared auth code and the sign-in page's files. Not part of the app itself |
 | `js/csv.js` | Bank CSV parser/mapper with size and row limits |
 | `js/charts.js`, `js/ui.js`, `js/onboarding.js`, `js/views.js`, `js/ideas-view.js`, `js/transfer.js`, `js/app.js` | UI. All DOM is built with a text-only builder (no `innerHTML`). `app.js` also holds the first screen and the How it works screen, opened from a button in the top bar of every screen |
 | `js/sample.js` | Demo persona (relative to today, never saved) |

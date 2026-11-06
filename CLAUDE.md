@@ -30,10 +30,10 @@ GitHub, so a push does not deploy. If that ever changes, a push could publish, s
 
 ## Testing
 
-- Unit tests: `node --test tests/*.test.js` (engine, config mapping, CSV, store, ideas, backup; pass explicit globs, a
-  bare directory fails). Every fix to forecast, safe-to-spend, bill, goal, debt, suggestion or backup logic needs a
+- Unit tests: `node --test tests/*.test.js tests/*.test.mjs` (engine, config mapping, CSV, store, ideas, backup, sign-in gate; pass
+  explicit globs, a bare directory fails). Every fix to forecast, safe-to-spend, bill, goal, debt, suggestion or backup logic needs a
   regression test.
-- Browser test: `tests/browser/ideas-flow.js` (needs Playwright and the repo served on port 8912; see the top of the file).
+- Browser tests: `tests/browser/gate-flow.js` (starts its own harness) and `tests/browser/ideas-flow.js` (needs Playwright and the repo served on port 8912; see the top of the file).
 - In the browser: serve the repo root (`python3 -m http.server`) and drive it with the preinstalled Chromium and
   Playwright. Check phone-sized and desktop screens, light and dark mode, the demo, and a real onboarding run
   (including skipping every question).
@@ -48,6 +48,9 @@ GitHub, so a push does not deploy. If that ever changes, a push could publish, s
 - No `innerHTML`, `eval` or string timers. All DOM goes through the `h()` builder in `js/util.js`, which only
   allows listed tags and attributes; user text is only ever set as a text node.
 - Anything read back from `localStorage` or a CSV goes through `js/store.js` validation before use. Never trust it.
+- The sign-in gate (`netlify/`, `auth/`) fails closed, never caches or serves the site without a valid session, and keeps the
+  passcode and session secret only in Netlify environment variables, never in the repo, tests or logs. Any change there needs a
+  test and the independent security check.
 - Nothing leaves the browser: no network requests, no third-party scripts or fonts (CSP `connect-src 'none'`).
 - The storage key `fd.v1` stays the same, because renaming it would hide existing users' data. A schema change
   needs a migration. Unreadable or newer-version data is backed up, never overwritten.
