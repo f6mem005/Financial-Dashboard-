@@ -70,6 +70,13 @@ Your numbers still never leave the browser. The only requests are the sign-in it
   other hosts need the same headers. The app also hides itself when it detects it is framed (defence in depth only; `frame-ancestors` is the real control).
 - Data is stored **unencrypted** in `localStorage` (the Settings screen says so).
 
+## The survey (`survey/`)
+
+`survey/` is the source of the separate prospective-user questionnaire (its own Netlify site, `finance-sense-survey`). It is kept here only so it is backed up and
+versioned; it has its own README, tests, sign-in and deploy steps, and is **never** part of this app's deploy (the stage list above names every file, and `survey/` is not in it).
+Run its tests from inside that folder: `cd survey && node --test tests/*.test.js tests/*.test.mjs`. This repo is public, so nothing secret may ever go in `survey/` (its
+passcodes and secrets live only in Netlify).
+
 ## Layout
 
 | File | Role |

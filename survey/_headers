@@ -1,0 +1,14 @@
+# Response headers for hosting this survey later (Netlify / Cloudflare Pages "_headers" format).
+# A <meta> policy cannot set frame-ancestors, so these need to come from the host.
+# connect-src 'self' lets the page post its answers to the same site (Netlify Forms) and nowhere else.
+/*
+  Content-Security-Policy: default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'; frame-ancestors 'none'; require-trusted-types-for 'script'; trusted-types 'none'; upgrade-insecure-requests
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: same-origin
+  X-Robots-Tag: noindex
+  Cross-Origin-Opener-Policy: same-origin
+  Cross-Origin-Resource-Policy: same-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()
+  Strict-Transport-Security: max-age=63072000; includeSubDomains
+  Cache-Control: no-cache

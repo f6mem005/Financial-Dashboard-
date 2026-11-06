@@ -72,3 +72,5 @@ Before every upload, run `node scripts/stamp-version.mjs <staging folder>` so op
 
 - Develop on `claude/finance-dashboard-young-adults-sj8pd9` and push to that branch only.
 - Commit and push as separate steps. Do not open a pull request unless asked.
+
+- `survey/` is a separate site (the questionnaire) stored in this repo for backup. Never stage it into the app deploy, never put secrets in it (this repo is public), and keep its own tests green: `cd survey && node --test tests/*.test.js tests/*.test.mjs`.

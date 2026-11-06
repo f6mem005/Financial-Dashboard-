@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="build" content="dev">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'; require-trusted-types-for 'script'; trusted-types 'none'">
+  <meta name="referrer" content="same-origin">
+  <meta name="color-scheme" content="light dark">
+  <meta name="robots" content="noindex">
+  <title>Finance Sense survey</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="css/survey.css">
+</head>
+<body>
+  <a class="skip" href="#main">Skip to the survey</a>
+  <div id="app"></div>
+  <div id="live" class="sr-only" aria-live="polite"></div>
+  <!-- forms:start -->
+  <!-- Netlify finds forms by reading this HTML when the site is published. These two forms are never shown or submitted
+       directly: survey.js sends the answers with fetch(). Every field it can send must be listed here (a test checks). -->
+  <form name="survey" method="POST" data-netlify="true" netlify-honeypot="bot-field" hidden aria-hidden="true">
+    <input type="hidden" name="form-name" value="survey">
+    <input name="response_id">
+    <input name="bot-field">
+    <input name="q1_safe">
+    <input name="q1_where">
+    <input name="q1_leaks">
+    <input name="q1_bills">
+    <input name="q1_forecast">
+    <input name="q1_whatif">
+    <input name="q1_alerts">
+    <input name="q1_goals">
+    <input name="q1_debt">
+    <input name="q1_subs">
+    <input name="q1_yearly">
+    <input name="q1_lowmonth">
+    <input name="q1_terms">
+    <input name="q1_shared">
+    <input name="q1_invest">
+    <input name="q2">
+    <input name="q3">
+    <input name="q4">
+    <input name="q13">
+    <input name="q5">
+    <input name="q6">
+    <input name="q7">
+    <input name="q8">
+    <input name="q9">
+    <input name="q10">
+    <input name="q11">
+    <input name="q11_other">
+    <input name="q12">
+    <input name="q14">
+    <input name="q16">
+    <input name="q15_try">
+    <input name="q15_quote">
+  </form>
+  <form name="survey-contact" method="POST" data-netlify="true" netlify-honeypot="bot-field" hidden aria-hidden="true">
+    <input type="hidden" name="form-name" value="survey-contact">
+    <input name="bot-field">
+    <input type="email" name="email">
+  </form>
+  <!-- forms:end -->
+  <noscript><p class="noscript">This survey needs JavaScript. Nothing is sent anywhere from this page.</p></noscript>
+  <script src="js/version.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/logic.js"></script>
+  <script src="js/questions.js"></script>
+  <script src="js/dom.js"></script>
+  <script src="js/survey.js"></script>
+  <script src="js/update.js"></script>
+</body>
+</html>
