@@ -22,6 +22,10 @@ const HEADERS = {
 const OPEN = ["/auth/login", "/auth/logout", "/auth/session", "/auth/admin", "/auth/gate.js", "/auth/gate.css"];
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c] as string));
 
+// The Finance Sense banner, the same on every page this gate serves.
+const band = () => `<header class="band"><div class="band-in"><svg viewBox="0 0 32 32" class="logo" aria-hidden="true" width="44" height="44"><circle cx="16" cy="16" r="16" class="logo-bg"/><path d="M7 21 L13 14 L18 18 L25 9" class="logo-line"/><path d="M20 9 L25 9 L25 14" class="logo-line"/></svg>
+<div class="brand"><span class="brand-name">${esc(SITE.title)}</span><span class="brand-tag">${esc(SITE.tag)}</span></div></div></header>`;
+
 export function signInPage(configured: boolean) {
   const body = configured
     ? `<form id="f" class="gate-form" novalidate>
@@ -37,12 +41,11 @@ export function signInPage(configured: boolean) {
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex">
 <title>${esc(SITE.title)}</title><link rel="stylesheet" href="/auth/gate.css"></head>
-<body><header class="band"><div class="band-in"><svg viewBox="0 0 32 32" class="logo" aria-hidden="true" width="44" height="44"><circle cx="16" cy="16" r="16" class="logo-bg"/><path d="M7 21 L13 14 L18 18 L25 9" class="logo-line"/><path d="M20 9 L25 9 L25 14" class="logo-line"/></svg>
-<div class="brand"><span class="brand-name">${esc(SITE.title)}</span><span class="brand-tag">${esc(SITE.tag)}</span></div></div></header>
+<body>${band()}
 <main class="gate"><h1>${esc(SITE.heading)}</h1><p class="blurb">${esc(SITE.blurb)}</p>${body}</main>
 <script src="/auth/gate.js"></script></body></html>`;
 }
-const adminsOnly = () => `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex"><title>${esc(SITE.title)}</title><link rel="stylesheet" href="/auth/gate.css"></head><body><main class="gate"><h1>Admins only</h1><p class="blurb">This part of the site is for the administrator.</p></main></body></html>`;
+const adminsOnly = () => `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex"><title>${esc(SITE.title)}</title><link rel="stylesheet" href="/auth/gate.css"></head><body>${band()}<main class="gate"><h1>Admins only</h1><p class="blurb">This part of the site is for the administrator.</p></main></body></html>`;
 
 const decode = (s: string) => { try { return decodeURIComponent(s); } catch { return null; } };
 

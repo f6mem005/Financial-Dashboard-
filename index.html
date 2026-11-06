@@ -2,8 +2,9 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
+  <meta name="build" content="dev">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; base-uri 'none'; form-action 'none'; object-src 'none'; require-trusted-types-for 'script'; trusted-types 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'; require-trusted-types-for 'script'; trusted-types 'none'">
   <meta name="referrer" content="no-referrer">
   <meta name="color-scheme" content="light dark">
   <title>Finance Sense</title>
@@ -15,6 +16,7 @@
   <div id="app"></div>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <noscript><p class="noscript">Finance Sense needs JavaScript to run. Nothing is sent anywhere — everything stays in your browser.</p></noscript>
+  <script src="js/version.js"></script>
   <script src="js/util.js"></script>
   <script src="js/catalog.js"></script>
   <script src="js/config.js"></script>
@@ -31,5 +33,6 @@
   <script src="js/views.js"></script>
   <script src="js/ideas-view.js"></script>
   <script src="js/app.js"></script>
+  <script src="js/update.js"></script>
 </body>
 </html>

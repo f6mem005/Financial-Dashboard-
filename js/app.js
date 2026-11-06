@@ -45,7 +45,30 @@
       if (!quiet) app.commit(); else app.save();
     },
     go: function (tab) { app.ui.tab = tab; app.ui.editing = null; app.render(true); },
-    goStep: function (i) { app.ui.step = Math.max(0, Math.min(i, FD.onboarding.total)); app.render(true); },
+    goStep: function (i) {
+      app.ui.step = Math.max(0, Math.min(i, FD.onboarding.total));
+      if (app.S.mode === 'real' && !app.S.onboarded) { app.S.setupStep = app.ui.step; if (!app._stale) app.save(); }   // so "Continue setup" picks up here, even after the tab is closed
+      app.render(true);
+    },
+    /* Keep what is typed so far during setup (answers are only written on Next, Back, Skip and so on). Used before the page reloads for an update. */
+    flush: function () {
+      try {
+        if (app.S.mode !== 'real' || app.S.onboarded || app._stale) return;
+        if (app._pendingBalance !== undefined && app._pendingBalance !== null) { app.setBalance(app._pendingBalance, true); app._pendingBalance = undefined; }
+        app.S.setupStep = Math.min(app.ui.step, FD.onboarding.total); app.save();
+      } catch (e) { /* reloading matters more than saving a half-typed answer */ }
+    },
+    /* Leave the questions for the landing page. Whatever is typed so far is kept; "Continue setup" picks up at the same question.
+       `announce` is the Save and exit button: it only leaves once the save really worked, and says so. */
+    exitSetup: function (announce) {
+      clearTimeout(app._adv);
+      if (app._pendingBalance !== undefined && app._pendingBalance !== null) { app.setBalance(app._pendingBalance, true); app._pendingBalance = undefined; }
+      app.S.setupStep = Math.min(app.ui.step, FD.onboarding.total);
+      var ok = app.save();
+      if (announce && !ok) return;
+      app.ui.started = false; app.render(true);
+      if (announce) UI.toast('Saved. Choose \u201cContinue setup\u201d to pick up where you left off.');
+    },
     editQuestion: function (i) {
       app.ui.editing = i; app.ui.returnTab = app.ui.tab; app._editBackup = JSON.parse(JSON.stringify(app.S.answers)); // Cancel restores this
       app.render(true);
@@ -71,7 +94,7 @@
     /* a backup the person chose to restore (already validated by FD.backup): it replaces what is on this device */
     replaceState: function (state) {
       app._stale = false; app.S = state; app._cfg = null;
-      app.ui.step = 0; app.ui.editing = null; app.ui.tab = 'home'; app.ui.how = false; app.ui.proj = null; app.ui.started = true; app.ui.whatIf = { cut: Object.create(null), extraSavings: 0 };
+      app.ui.step = app.S.onboarded ? 0 : Math.min(app.S.setupStep || 0, FD.onboarding.total); app.ui.editing = null; app.ui.tab = 'home'; app.ui.how = false; app.ui.proj = null; app.ui.started = true; app.ui.whatIf = { cut: Object.create(null), extraSavings: 0 };
       var ok = app.save(); app.render(true);
       if (ok) UI.toast('Backup restored on this device.');
     },
@@ -117,7 +140,7 @@
   }
 
   var STEPS = [
-    ['Answer a few questions', 'About 13 quick ones, around 3 minutes: what you earn, your bills, what you owe, what you want. Skip anything you don’t know. We use a typical number and tell you when we did.'],
+    ['Answer a few questions', 'About 13 quick ones, around 3 minutes: what you earn, your bills, what you owe, what you want. The money questions need an answer, even if it is $0 or N/A, so nothing is guessed for you.'],
     ['See where you stand', 'Home shows how much is safe to spend until payday, which bills are coming, and where your balance is heading over the next months.'],
     ['Get ideas', 'The Ideas tab works out how much you could set aside, shows what saving or investing it could grow into, points out places to spend less, and flags charges that look doubled up.'],
     ['Keep it current', 'Log what you spend or import a CSV from your bank. When your pay, bills or plans change, we notice and offer to update, or you can change any answer in a tap.'],
@@ -131,22 +154,20 @@
     ['Spend less', 'Spot ways to cut back and charges that look doubled up.', TABS[2][2]]
   ];
 
-  function logo() {
-    return h('svg', { viewBox: '0 0 32 32', class: 'logo', 'aria-hidden': 'true', width: 48, height: 48 },
-      h('circle', { cx: 16, cy: 16, r: 16, class: 'logo-bg' }),
-      h('path', { d: 'M7 21 L13 14 L18 18 L25 9', class: 'logo-line' }),
-      h('path', { d: 'M20 9 L25 9 L25 14', class: 'logo-line' }));
-  }
+  function logo() { return UI.logo(48); }
 
   /* The landing page: a Finance Sense banner, what the app is for, what you get, how it works, and ONE Start button pinned to the
      bottom. It is the first screen for anyone who has not finished setup, and is reopened from the top bar (inApp = true). */
   function howItWorks(inApp, resuming) {
     var S = app.S;
+    var blank = !inApp && resuming && !Object.keys(S.answers || {}).length && !(S.setupStep > 0);   // started, but nothing answered yet: not really "resuming"
     var primary = inApp
       ? UI.btn('Back', function () { app.ui.how = false; app.render(true); }, 'primary big')
+      : blank ? UI.btn('Get started', function () { app.ui.started = true; app.ui.step = 0; app.render(true); }, 'primary big')
       : resuming
-        ? UI.btn('Continue setup', function () { app.ui.started = true; app.ui.step = 0; app.render(true); }, 'primary big')
+        ? UI.btn('Continue setup', function () { app.ui.started = true; app.ui.step = Math.min(S.setupStep || 0, FD.onboarding.total); app.render(true); }, 'primary big')
         : UI.btn('Get started', function () { app.startReal(); }, 'primary big');
+    if (blank) resuming = false;
     function link(text, fn) { return UI.btn(text, fn, 'landing-link'); }
     var unreadable = !inApp && FD.store.loadFailed() ? h('div', { class: 'note', role: 'alert' },
         h('p', null, FD.store.backupOk()
@@ -157,7 +178,7 @@
       h('div', { class: 'brand-row' }, logo(), h('div', { class: 'brand-text' }, h('span', { class: 'brand-name' }, 'Finance Sense'), h('span', { class: 'brand-tag' }, 'Your money, made simple'))),
       h('h1', { class: 'landing-title', tabindex: '-1', id: 'q-title' }, inApp ? 'How Finance Sense works' : 'Know where your money is going'),
       h('p', { class: 'landing-intro' }, 'Finance Sense is a simple money dashboard that makes managing your money clearer and easier. Answer a few quick questions and it shows what is safe to spend until payday, which bills are coming and where your balance is heading, then suggests how much you could set aside. No account, no bank connection, and your numbers stay on this device.'),
-      !inApp ? h('p', { class: 'landing-note' }, resuming ? 'Your earlier answers are saved. You can change or skip any question.' : 'Takes about 3 minutes. You can skip any question.') : null,
+      !inApp ? h('p', { class: 'landing-note' }, resuming ? 'Your earlier answers are saved. You can change any of them.' : 'Takes about 3 minutes. Nothing to enter? Choose $0 or N/A.') : null,
       h('div', { class: 'landing-links' },
         !inApp ? link('Look at a demo first', function () { app.startDemo(); }) : null,
         !inApp && resuming ? link('Start over with a blank setup', function () { app.startReal(); }) : null,
@@ -189,8 +210,7 @@
     var nav = h('nav', { class: 'tabs', 'aria-label': 'Main' }, TABS.map(function (t) {
       return h('button', { type: 'button', class: 'tab' + (app.ui.tab === t[0] ? ' on' : ''), 'aria-current': app.ui.tab === t[0] ? 'page' : null, onclick: function () { app.go(t[0]); } }, icon(t[2]), h('span', null, t[1]));
     }));
-    return h('div', { class: 'shell' }, banner, h('header', { class: 'topbar' }, h('span', { class: 'brand' }, 'Finance Sense'),
-      UI.btn('How it works', function () { app.ui.how = true; app.render(true); }, 'small ghost how-btn')), content, disclaimer(), nav);
+    return h('div', { class: 'shell' }, banner, UI.banner(UI.btn('How it works', function () { app.ui.how = true; app.render(true); }, 'small ghost how-btn')), content, disclaimer(), nav);
   }
 
   // Another tab changed the data: reload it instead of overwriting it on our next save.

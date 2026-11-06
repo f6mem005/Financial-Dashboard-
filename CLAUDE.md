@@ -51,8 +51,8 @@ GitHub, so a push does not deploy. If that ever changes, a push could publish, s
 - The sign-in gate (`netlify/`, `auth/`, `admin/`) fails closed and never serves the site without a valid session. `SESSION_SECRET` and
   `ADMIN_PASSCODE` are set by the owner in Netlify, never by an assistant, and never appear in the repo, tests, logs or chat. Personal
   passcodes are stored only as PBKDF2 hashes and shown once. Any change there needs a test and the independent security check.
-- Nothing leaves the browser: no network requests, no third-party scripts or fonts. The app page's own policy is `connect-src 'none'`
-  (the `_headers` value is `'self'` only so the admin page can reach its API; both apply together).
+- Nothing leaves the browser: no third-party scripts, fonts or hosts. The only requests the app page makes are to its own site (`connect-src 'self'`,
+  in both the page's meta policy and `_headers`): the `/version.json` update check, sign-in and the admin tools. Never loosen it past `'self'`.
 - The storage key `fd.v1` stays the same, because renaming it would hide existing users' data. A schema change
   needs a migration. Unreadable or newer-version data is backed up, never overwritten.
 - Money math must stay honest: paying a bill moves real money (it is recorded as an expense), nothing is
@@ -62,6 +62,11 @@ GitHub, so a push does not deploy. If that ever changes, a push could publish, s
 - Backup files are untrusted input: they only enter through `FD.backup.open`, which passes them through `store.sanitize`.
   Never read a file's contents any other way, and keep the PBKDF2 iteration bounds.
 - Never put secrets, tokens or API keys in the repo.
+
+## Deploying: stamp the build
+
+Before every upload, run `node scripts/stamp-version.mjs <staging folder>` so open pages are told to refresh (see README). Never commit the stamped
+`js/version.js`; the repo copy keeps the `'dev'` placeholder. Stage exactly the files listed in README, from the committed code.
 
 ## Git
 

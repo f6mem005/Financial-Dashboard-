@@ -43,14 +43,21 @@
     var a = app.S.answers; a.pay = a.pay || {};
     var varies = a.payFreq === 'varies';
     var wrap = h('div', { class: 'stack' });
+    var none = a.pay.none === true;
+    wrap.appendChild(h('div', { class: 'chips' }, UI.chip('$0 / N/A: I have no pay right now', none, function () {
+      a.pay.none = !none;
+      a.pay.amount = null; a.pay.low = null; a.pay.high = null;   // either way the boxes start empty, so it is a fresh answer
+      app.render();
+    })));
+    if (none) { wrap.appendChild(h('p', { class: 'hint' }, 'No pay will be counted for now. You can add it later in Settings.')); return wrap; }
     if (varies) {
-      wrap.appendChild(UI.field('A slow month (what you can count on)', UI.moneyInput(a.pay.low, function (v) { a.pay.low = v; }, { label: 'Slow month income' }), 'We plan with this number so surprises are good ones.'));
-      wrap.appendChild(UI.field('A good month', UI.moneyInput(a.pay.high, function (v) { a.pay.high = v; }, { label: 'Good month income' })));
+      wrap.appendChild(UI.field('A slow month (what you can count on)', UI.moneyInput(a.pay.low, function (v) { a.pay.low = v; }, { label: 'Slow month income', placeholder: '0' }), 'We plan with this number so surprises are good ones.'));
+      wrap.appendChild(UI.field('A good month', UI.moneyInput(a.pay.high, function (v) { a.pay.high = v; }, { label: 'Good month income', placeholder: '0' })));
     } else {
       var range = h('input', { type: 'range', min: 0, max: 6000, step: 50, class: 'range', 'aria-label': 'Paycheck amount slider', value: a.pay.amount || 0 });
-      var money = UI.moneyInput(a.pay.amount, function (v) { a.pay.amount = v; range.value = v || 0; }, { label: 'Paycheck amount' });
+      var money = UI.moneyInput(a.pay.amount, function (v) { a.pay.amount = v; a.pay.none = v === 0; range.value = v || 0; }, { label: 'Paycheck amount', placeholder: '0' });   // typing 0 means no pay, on purpose
       range.addEventListener('input', function () {
-        a.pay.amount = U.num(range.value, 0);
+        a.pay.amount = U.num(range.value, 0); a.pay.none = a.pay.amount === 0;
         var inp = money.querySelector('input'); inp.value = String(a.pay.amount || '');
       });
       wrap.appendChild(UI.field('Per paycheck, after taxes', money));
@@ -58,7 +65,7 @@
     }
     var date = h('input', { type: 'date', class: 'input', 'aria-label': 'Next payday', value: a.pay.nextPayday || '', min: U.iso(app.now()) });
     date.addEventListener('change', function () { a.pay.nextPayday = U.parseISO(date.value) ? date.value : null; });
-    wrap.appendChild(UI.field('When is your next payday? (optional)', date, 'Skip this and we’ll assume a week from today.'));
+    wrap.appendChild(UI.field('When is your next payday? (optional)', date, 'Leave this blank and we’ll assume a week from today.'));
     return wrap;
   }
 
@@ -123,8 +130,8 @@
         fields.appendChild(UI.field('By when', d));
         fields.appendChild(UI.field('Already saved (optional)', UI.moneyInput(r.saved0 || null, function (v) { r.saved0 = v || 0; }, { label: 'Already saved' })));
       } else {
-        fields.appendChild(UI.field(q.amountLabel, UI.moneyInput(r[q.amountKey], function (v) { r[q.amountKey] = v; }, { label: q.amountLabel, placeholder: typical !== null ? String(typical) : '0' }),
-          typical !== null ? 'Typical: ' + U.money(typical) + ' — used if blank' : null));
+        fields.appendChild(UI.field(q.amountLabel, UI.moneyInput(r[q.amountKey], function (v) { r[q.amountKey] = v; }, { label: q.amountLabel, placeholder: '0' }),
+          typical !== null ? 'Typical: ' + U.money(typical) + '. Enter your own amount (0 is fine).' : 'Enter an amount (0 is fine).'));
         if (q.dueKey) fields.appendChild(UI.field('Due on the', UI.select(dueOptions(), r.due || 1, function (v) { r.due = +v; }, 'Day of month due')));
         if (q.monthKey) fields.appendChild(UI.field('Usually in', UI.select(monthOptions(), r.month || 6, function (v) { r.month = +v; }, 'Month')));
       }
@@ -148,6 +155,45 @@
     return box;
   }
 
+  /* The money questions must be answered: an amount (0 is fine), or an explicit None / N/A. Returns '' when fine, else a plain message. */
+  function amountOk(v) { return typeof v === 'number' && isFinite(v) && v >= 0; }
+  function validateAnswers(answers, q) {
+    if (!q.required) return '';
+    if (q.kind === 'single') return answers[q.id] ? '' : 'Choose one to continue.';
+    if (q.kind === 'pay') {
+      var p = answers.pay || {};
+      if (p.none === true) return '';
+      if (answers.payFreq === 'varies') return amountOk(p.low) && amountOk(p.high) ? '' : 'Enter a slow month and a good month (0 is fine), or choose $0 / N/A.';
+      return amountOk(p.amount) ? '' : 'Enter your pay per paycheck (0 is fine), or choose $0 / N/A.';
+    }
+    var list = answers[q.id], none = q.noneLabel || 'None / N/A';
+    if (!Array.isArray(list)) return 'Pick what applies, or choose ' + none + '.';
+    for (var i = 0; i < list.length; i++) {
+      var r = list[i], who = String(r.name || '').trim() || 'each item';
+      if ((r.custom || !C.find(q.catalog, q.debt || q.goal ? r.type : r.id)) && !String(r.name || '').trim()) return 'Name your \u201cOther\u201d item, or remove it.';
+      if (q.debt) {
+        if (!amountOk(r.balance) || !amountOk(r.min)) return 'Enter what you owe and the smallest payment for ' + who + ' (0 is fine).';
+        if (!amountOk(r.apr) && r.aprKnown !== false) return 'Enter the yearly interest rate for ' + who + ', or tap \u201cI don\u2019t know\u201d.';
+      } else if (!amountOk(r[q.amountKey])) return 'Enter an amount for ' + who + ' (0 is fine).';
+    }
+    return '';
+  }
+
+  /* Leaving the questions: Home goes back to the landing page, Save and exit does the same and says it saved. Nothing typed is lost either way. */
+  function homeBtn(app) { return UI.btn('Home', function () { app.exitSetup(false); }, 'small ghost', { 'aria-label': 'Home. Back to the start page, your answers are kept' }); }
+  function exitRow(app) { return h('div', { class: 'exit-row' }, UI.btn('Save and exit', function () { app.exitSetup(true); }, 'link')); }
+
+  /* Changing how you are paid changes what the pay question needs (one amount, or a slow and a good month): if the old answer no longer fits, go and ask it again. */
+  function recheckPay(app) {
+    for (var i = 0; i < Q.length; i++) {
+      if (Q[i].id !== 'pay') continue;
+      if (!validateAnswers(app.S.answers, Q[i])) return false;
+      UI.toast('Your pay schedule changed, so please check your pay amount.');
+      app.editQuestion(i); return true;
+    }
+    return false;
+  }
+
   /* ----- one question screen ----- */
   function screen(app, qi, opts) {
     opts = opts || {};
@@ -166,22 +212,27 @@
     else if (q.kind === 'pay') body = payBody(app);
     else body = rowsBody(app, q);
 
+    var err = h('p', { class: 'form-error bad', role: 'alert', id: 'q-error' });
+    function check() { var m = validateAnswers(app.S.answers, q); err.textContent = m; if (m && err.scrollIntoView) err.scrollIntoView({ block: 'center' }); return !m; }
+
     var progress = opts.editing ? null : h('div', { class: 'progress' },
       h('div', { class: 'progress-top' }, h('span', null, q.section), h('span', null, (qi + 1) + ' of ' + total)),
       FD.charts.bar((qi + 1) / total, '', 'Questionnaire progress'));
 
     var footer = opts.editing
       ? h('div', { class: 'nav-row' }, UI.btn('Cancel', function () { opts.onCancel(); }, 'ghost'),
-        UI.btn('Use defaults', function () { delete app.S.answers[q.id]; app.save(); opts.onNext(); }, 'link'),
-        UI.btn('Save', function () { app.save(); opts.onNext(); }, 'primary'))
+        q.required ? null : UI.btn('Use defaults', function () { delete app.S.answers[q.id]; app.save(); opts.onNext(); }, 'link'),
+        UI.btn('Save', function () { if (!check()) return; app.save(); if (q.id === 'payFreq' && recheckPay(app)) return; opts.onNext(); }, 'primary'))
       : h('div', { class: 'nav-row' },
         UI.btn('Back', function () { clearTimeout(app._adv); app.save(); app.goStep(qi - 1); }, 'ghost', qi === 0 ? { disabled: true } : null),
-        UI.btn('Skip', function () { delete app.S.answers[q.id]; app.save(); next(); }, 'link'),
-        UI.btn(qi === total - 1 ? 'Finish' : 'Next', function () { advance(false); }, 'primary'));
+        q.required ? null : UI.btn('Skip', function () { delete app.S.answers[q.id]; app.save(); next(); }, 'link'),
+        UI.btn(qi === total - 1 ? 'Finish' : 'Next', function () { if (!check()) return; advance(false); }, 'primary'));
 
-    return h('main', { class: 'screen onboarding', id: 'main' }, progress,
-      h('h1', { class: 'q-title', tabindex: '-1', id: 'q-title' }, q.title),
-      q.help ? h('p', { class: 'q-help' }, q.help) : null, body, footer);
+    var exit = opts.editing ? null : exitRow(app);
+    return h('div', { class: 'page' }, UI.banner(opts.editing ? null : homeBtn(app)),
+      h('main', { class: 'screen onboarding', id: 'main' }, progress,
+        h('h1', { class: 'q-title', tabindex: '-1', id: 'q-title' }, q.title),
+        q.help ? h('p', { class: 'q-help' }, q.help) : null, body, err, exit, footer));
   }
 
   /* ----- "here's what we set up" ----- */
@@ -192,14 +243,14 @@
     bal.appendChild(UI.field('What’s in your checking account right now? (optional)', UI.moneyInput(s.balanceSet ? app.balance() : null, function (v) { app._pendingBalance = v; }, { label: 'Current balance', min: -1e8 }), 'Used as the starting point for your forecast. Overdrawn? Enter a negative number. Skip and we’ll start from $0.'));
     var why = cfg.why.length ? h('ul', { class: 'why' }, cfg.why.map(function (w) { return h('li', null, w); })) : h('p', { class: 'q-help' }, 'Basic dashboard: your month at a glance and a balance forecast.');
     var assumed = cfg.assumed.length ? h('div', { class: 'flag' }, h('strong', null, 'Estimates we filled in for you'), h('ul', null, cfg.assumed.map(function (a) { return h('li', null, a); })), h('p', { class: 'hint' }, 'Change any of these later in Settings.')) : null;
-    return h('main', { class: 'screen onboarding', id: 'main' },
+    return h('div', { class: 'page' }, UI.banner(homeBtn(app)), h('main', { class: 'screen onboarding', id: 'main' },
       h('div', { class: 'progress' }, h('div', { class: 'progress-top' }, h('span', null, 'All done'), h('span', null, Q.length + ' of ' + Q.length)), FD.charts.bar(1, '', 'Questionnaire progress')),
       h('h1', { class: 'q-title', tabindex: '-1', id: 'q-title' }, 'Your dashboard is ready'),
-      why, assumed, bal,
+      why, assumed, bal, exitRow(app),
       h('div', { class: 'nav-row' }, UI.btn('Back', function () { app.goStep(Q.length - 1); }, 'ghost'),
-        UI.btn('Open my dashboard', function () { app.finishOnboarding(); }, 'primary')));
+        UI.btn('Open my dashboard', function () { app.finishOnboarding(); }, 'primary'))));
   }
 
-  FD.onboarding = { screen: screen, summary: summary, total: Q.length };
+  FD.onboarding = { screen: screen, summary: summary, total: Q.length, validate: validateAnswers };
   if (typeof module !== 'undefined' && module.exports) module.exports = FD;
 })(typeof window !== 'undefined' ? window : globalThis);

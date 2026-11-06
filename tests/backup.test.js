@@ -16,7 +16,9 @@ test('plain backup round-trips the whole state', async () => {
 test('locked backup hides the contents and needs the right passphrase', async () => {
   const s = real(), made = await B.make(s, 'correct horse battery');
   assert.equal(made.locked, true);
-  assert.ok(!/Pizza|transactions|Credit|rent/i.test(made.text));
+  const wrapper = JSON.parse(made.text);
+  assert.deepEqual(Object.keys(wrapper).sort(), ['cipher', 'data', 'format', 'kdf', 'version'], 'only the envelope is readable');
+  assert.ok(!made.text.includes('Pizza night') && !made.text.includes('"transactions"') && !made.text.includes('"answers"'), 'no readable field names or text');   // (random-looking encrypted text can contain short words by chance, so only long, specific strings are checked)
   const found = B.inspect(made.text); assert.equal(found.locked, true);
   const got = await B.open(found, 'correct horse battery');
   assert.equal(got.transactions.length, s.transactions.length);

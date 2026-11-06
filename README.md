@@ -45,10 +45,21 @@ How it holds together:
 After a deploy, check from outside: `curl -sI <site>/` shows 401 and exactly one `content-security-policy` header;
 `curl -s --path-as-is -o /dev/null -w '%{http_code}' '<site>/auth/..%2findex.html'` is 401; and an unsigned `POST /` is refused.
 
+## Telling people to refresh after an update
+
+Every deploy gets a build id. The page knows the id it loaded (`js/version.js`); while it is open, `js/update.js` asks `/version.json` which
+build is live (when the tab comes back into view, when the window is focused, and every 5 minutes). If the answer differs, a blue bar appears at the top with a
+**Refresh** button. It never reloads by itself, so nothing anyone is typing is lost. If the sign-in has ended it says "You have been signed out". Unclear answers (offline, an error) show nothing.
+
+**The deploy step that makes it work:** after staging the files and before uploading, run `node scripts/stamp-version.mjs <staging folder>`. It writes the same
+new build id into the staged `js/version.js` and `version.json`. The copy in the repo keeps its `'dev'` placeholder, and a page with `'dev'` (running locally, or a stage that was not
+stamped) never shows the bar. **Skipping the stamp means nobody is told about that update.** Pages that were open before the first stamped deploy do not have the checker yet, so only updates after that one are announced.
+The page's security policy allows connections to its own site only (`connect-src 'self'`) so it can read `/version.json`; no other host.
+
 ## What to publish
 
 Stage exactly: `index.html`, `_headers`, `css/`, `js/`, `auth/gate.js`, `auth/gate.css`, `admin/` (3 files), `netlify.toml`, `package.json`, `package-lock.json`,
-`netlify/edge-functions/gate.ts`, `netlify/functions/` (login, session, logout, admin), `netlify/shared/` (auth, people, http, site). **Not** `tests/`, `README.md`, `CLAUDE.md`, `.git`, `node_modules`.
+`netlify/edge-functions/gate.ts`, `netlify/functions/` (login, session, logout, admin), `netlify/shared/` (auth, people, http, site), then stamp it (see above). **Not** `tests/`, `README.md`, `CLAUDE.md`, `.git`, `node_modules`.
 Your numbers still never leave the browser. The only requests are the sign-in itself (name and passcode to this site's own login), the per-request check that a person's passcode is still valid, and, for the admin, the admin page's own calls.
 
 ## Hosting (security)
@@ -71,6 +82,7 @@ Your numbers still never leave the browser. The only requests are the sign-in it
 | `js/backup.js` | Backup file for moving to another device: plain or passphrase-locked (AES-256-GCM, PBKDF2), re-validated on the way in |
 | `netlify/`, `auth/`, `admin/` | The sign-in gate (edge function), the login/session/logout/admin functions, shared auth and people-store code, the sign-in page's files and the admin page. Not part of the app itself |
 | `js/csv.js` | Bank CSV parser/mapper with size and row limits |
+| `js/version.js`, `js/update.js`, `scripts/stamp-version.mjs` | The "new version, please refresh" bar and the deploy-time build stamp |
 | `js/charts.js`, `js/ui.js`, `js/onboarding.js`, `js/views.js`, `js/ideas-view.js`, `js/transfer.js`, `js/app.js` | UI. All DOM is built with a text-only builder (no `innerHTML`). `app.js` also holds the first screen and the How it works screen, opened from a button in the top bar of every screen |
 | `js/sample.js` | Demo persona (relative to today, never saved) |
 
@@ -89,7 +101,9 @@ Your numbers still never leave the browser. The only requests are the sign-in it
 - **Yearly costs** due today are skipped if an expense of about the same amount (any category) is already logged today, so an unrelated same-size payment can hide one on that single day.
 - **Several tabs:** if another tab changes your data while this one has unsaved typing, this tab stops saving and asks you to reload (it never overwrites the other tab's data).
 - **Storage:** plain `localStorage` (not encrypted). Moving to another device is a **backup file** you save and restore by hand (Settings, or the first screen on the new device); there is no automatic sync and the file is a snapshot. A passphrase is optional: a plain file is readable by anyone who gets it; a locked file cannot be opened if the passphrase is forgotten. Restoring replaces what is on that device after a summary and a confirmation.
-- **Ideas tab is guidance, not advice, and never guesses your pay:** if pay was skipped it asks for it instead of showing a number; if bills or everyday spending were skipped it says the figure uses typical amounts. Savings amounts are half ("comfortable") and 80% ("stretch") of what is left after bills, usual spending, debt minimums, yearly costs and the monthly amount your goals need (slow-month pay if income varies). The growth illustration uses four *generic* fund types (savings account, bond index fund, 60/40 mixed fund, broad stock index fund) with rough yearly growth ranges **after inflation and fees**, editable by the person, and never names a product or ticker. Spend-less amounts are rough per-year figures that overlap; duplicates are only *possible* duplicates and can be dismissed.
+- **The money questions cannot be skipped.** How you are paid, pay, other income, bills, everyday spending, yearly costs and debts each need real amounts (0 is fine) or an explicit "None / N/A"; nothing is filled in with a typical amount for new setups. Older saved data that skipped them (left blank) keeps working with typical amounts, flagged, until they are edited; an older answer of exactly 0 for pay is now respected as $0 instead of being replaced by a typical amount. Everything else (goals, what you want, style) can still be skipped.
+- **Leaving setup partway.** Every question screen has a **Home** button in the banner and a **Save and exit** link; both return to the landing page and keep what was typed. Save and exit only leaves once the save really worked, and says so. The question you were on is stored (`setupStep`), so **Continue setup** resumes there, even after the tab is closed. The Finance Sense banner is on every screen, including the sign-in, admins-only and admin pages.
+- **Ideas tab is guidance, not advice, and never guesses your pay:** if pay was skipped (older data) it asks for it instead of showing a number; if bills or everyday spending were skipped it says the figure uses typical amounts. Savings amounts are half ("comfortable") and 80% ("stretch") of what is left after bills, usual spending, debt minimums, yearly costs and the monthly amount your goals need (slow-month pay if income varies). The growth illustration uses four *generic* fund types (savings account, bond index fund, 60/40 mixed fund, broad stock index fund) with rough yearly growth ranges **after inflation and fees**, editable by the person, and never names a product or ticker. Spend-less amounts are rough per-year figures that overlap; duplicates are only *possible* duplicates and can be dismissed.
 - **"What changed" check** compares logged paychecks, bill payments, everyday spending, repeating charges and balance age with the answers; suggestions apply from today forward and leave logged transactions alone, with one exception: "Add as a bill" re-tags that bill's matching past charges so they are not counted twice (as everyday spending and as a bill). Needs a few weeks of logged data, and trend ideas wait until day 10 of a month. The "update your balance" nudge goes by when you last *confirmed* the balance (`settings.balanceChecked`), and is always shown first.
 - **Single checking balance**, no multiple accounts, no transfers, no currency options (USD formatting).
 - **Not financial advice.** Disclaimer in the footer of every screen; goals such as "Investing" are just savings targets.

@@ -14,7 +14,7 @@
   function defaultState() {
     return {
       v: 1, mode: 'fresh', // 'fresh' | 'demo' | 'real'
-      answers: {}, onboarded: false,
+      answers: {}, onboarded: false, setupStep: 0,
       settings: { openingBalance: 0, balanceSet: false, balanceDate: null, balanceChecked: null, minBalance: 0, includeGoals: true, showAll: false, savingsBalance: null, dismissed: [] },
       transactions: [], billsPaid: {}, subs: []
     };
@@ -32,7 +32,7 @@
     if (oneOf(a.payFreq, C.PAY_FREQ.map(function (x) { return x.id; }))) out.payFreq = a.payFreq;
     if (isObj(a.pay)) {
       out.pay = { amount: optNum(a.pay.amount, 0, 1e6), low: optNum(a.pay.low, 0, 1e6), high: optNum(a.pay.high, 0, 1e6),
-        nextPayday: U.parseISO(a.pay.nextPayday) ? a.pay.nextPayday : null };
+        nextPayday: U.parseISO(a.pay.nextPayday) ? a.pay.nextPayday : null, none: a.pay.none === true };
     }
     function rows(list, fields) {
       var seenRow = Object.create(null);
@@ -82,6 +82,7 @@
     if (!isObj(raw)) return s;
     s.mode = raw.mode === 'real' ? 'real' : 'fresh'; // demo is never loaded from disk
     s.onboarded = !!raw.onboarded && s.mode === 'real';
+    s.setupStep = s.onboarded ? 0 : Math.round(U.num(raw.setupStep, 0, 0, 50));   // which question to resume at
     s.answers = sanitizeAnswers(raw.answers);
     if (isObj(raw.settings)) {
       s.settings.openingBalance = U.num(raw.settings.openingBalance, 0, -1e8, 1e8);

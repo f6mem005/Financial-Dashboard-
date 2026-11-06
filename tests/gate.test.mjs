@@ -236,7 +236,7 @@ test('gate: if the check cannot be made, a person is not let in (fails closed); 
 test('gate: the /admin area is for the admin only, however the path is written', async () => {
   reset(); await P.createPerson('Ana', 'rakobu47'); const { cookie } = await signInAs('Ana', 'rakobu47'); withSessionCheck(viaSessionFn); const a = await asAdmin();
   for (const p of ['/admin/', '/admin', '/admin/index.html', '/admin/admin.js', '/Admin/', '/%61dmin/', '/%41dmin/index.html', '/x/..%2fadmin/', '//admin/', '/ADMIN/admin.js']) {
-    let ctx = next(), r = await gate(req(p, { cookie, headers: { accept: 'text/html' } }), ctx); assert.equal(r.status, 403, p); assert.equal(ctx.calls, 0, p); assert.match(await r.text(), /Admins only/);
+    let ctx = next(), r = await gate(req(p, { cookie, headers: { accept: 'text/html' } }), ctx); assert.equal(r.status, 403, p); assert.equal(ctx.calls, 0, p); const body403 = await r.text(); assert.match(body403, /Admins only/); assert.match(body403, /class="band"[\s\S]*Finance Sense/, 'the Finance Sense banner is on the admins-only page');
     ctx = next(); await gate(req(p, { cookie: a, headers: { accept: 'text/html' } }), ctx); assert.equal(ctx.calls, 1, p);
   }
 });
@@ -331,14 +331,14 @@ test('login: unknown and known names cost the same reads; the body size is the r
   const c = await asAdmin();
   assert.equal((await adminCall(c, { action: 'create', name: 'a'.repeat(5000), passcode: 'rakobu47' })).status, 413);
 });
-test('the app page keeps its own strict connect-src even though the header value is looser (the admin page needs it)', async () => {
+test('every page may reach only its own site (connect-src \'self\', no other host), in both the page and the headers', async () => {
   const fs = await import('node:fs'), url = await import('node:url'), path = await import('node:path');
   const root = path.join(path.dirname(url.fileURLToPath(import.meta.url)), '..');
   const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8'), headers = fs.readFileSync(path.join(root, '_headers'), 'utf8');
   const meta = html.match(/Content-Security-Policy"\s+content="([^"]+)"/)[1];
   assert.match(headers, /connect-src 'self'/);
-  const expected = process.env.EXPECT_CONNECT_SRC || (/survey/.test(WORDS.id) ? "'self'" : "'none'");
-  assert.ok(meta.includes(`connect-src ${expected}`), 'index.html meta connect-src should be ' + expected);
+  assert.match(meta, /connect-src 'self'(;|$)/, 'the page may reach its own site only (the version check, sign-in and admin tools), never another host');
+  assert.match(headers, /connect-src 'self'(;|\s|$)/);
 });
 
 test('people: two creates of the same name at the same moment give exactly one person', async () => {

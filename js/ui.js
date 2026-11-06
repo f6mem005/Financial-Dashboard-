@@ -55,6 +55,18 @@
     clearTimeout(toast.t); toast.t = setTimeout(function () { el.classList.remove('show'); }, ms || 3500);
   }
 
-  FD.ui = { btn: btn, card: card, tile: tile, moneyInput: moneyInput, field: field, select: select, chip: chip, toast: toast };
+  /* The Finance Sense banner shown at the top of every screen. `actions` is an optional button or two on the right. */
+  function logo(size) {
+    return h('svg', { viewBox: '0 0 32 32', class: 'logo', 'aria-hidden': 'true', width: size, height: size },
+      h('circle', { cx: 16, cy: 16, r: 16, class: 'logo-bg' }),
+      h('path', { d: 'M7 21 L13 14 L18 18 L25 9', class: 'logo-line' }),
+      h('path', { d: 'M20 9 L25 9 L25 14', class: 'logo-line' }));
+  }
+  function banner(actions) {
+    return h('header', { class: 'topbar site-banner' },
+      h('div', { class: 'brand-row' }, logo(30), h('span', { class: 'brand' }, 'Finance Sense')), actions || null);
+  }
+
+  FD.ui = { logo: logo, banner: banner, btn: btn, card: card, tile: tile, moneyInput: moneyInput, field: field, select: select, chip: chip, toast: toast };
   if (typeof module !== 'undefined' && module.exports) module.exports = FD;
 })(typeof window !== 'undefined' ? window : globalThis);

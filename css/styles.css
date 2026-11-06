@@ -38,6 +38,11 @@ h1:focus { outline: none; }
 .topbar { padding: 14px 16px 0; max-width: 720px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .brand { font-weight: 700; letter-spacing: .01em; color: var(--text-2); }
 .page-title { font-size: 1.5rem; }
+html { scroll-padding-top: 7rem; }   /* a focused control is never left under the update bar */
+.skip:focus { z-index: 70; }
+.update-bar { position: sticky; top: 0; z-index: 60; display: flex; gap: 12px; align-items: center; justify-content: space-between; padding: 10px 16px; background: #1d4f9f; color: #ffffff; font-size: .95rem; }
+.update-btn { flex: none; border: 0; border-radius: 10px; min-height: 40px; padding: 0 16px; background: #ffffff; color: #123a75; font: inherit; font-weight: 700; cursor: pointer; }
+.update-bar :focus-visible { outline-color: #ffffff; }
 .demo-banner { display: flex; gap: 10px; align-items: center; justify-content: space-between; padding: 8px 16px; background: var(--accent-soft); font-size: .9rem; }
 
 /* cards */
@@ -110,6 +115,7 @@ h1:focus { outline: none; }
 .bar-fill.good { background: var(--good); } .bar-fill.warn { background: var(--warn); } .bar-fill.bad { background: var(--bad); }
 .q-title { font-size: 1.6rem; line-height: 1.2; }
 .q-help { color: var(--text-2); }
+.form-error { font-weight: 600; min-height: 1.3em; }
 .options { display: flex; flex-direction: column; gap: 10px; }
 .option { text-align: left; border: 1.5px solid var(--line); background: var(--surface); border-radius: 14px; padding: 14px 16px; min-height: 52px; cursor: pointer; display: flex; flex-direction: column; gap: 2px; }
 .option.on { border-color: var(--accent); background: var(--accent-soft); }
@@ -274,3 +280,12 @@ html { scroll-padding-bottom: 7rem; }   /* a focused control is never left under
   .toast { bottom: 24px; }
 }
 @media (prefers-reduced-motion: reduce) { .toast { transition: none; } }
+
+/* the Finance Sense banner on every screen */
+.site-banner { padding-top: 12px; padding-bottom: 8px; }
+.site-banner .brand-row { gap: 8px; }
+.site-banner .logo { width: 30px; height: 30px; }
+.site-banner .logo-bg { fill: var(--accent); }
+.site-banner .brand { font-size: 1.1rem; font-weight: 800; color: var(--text); }
+.exit-row { display: flex; justify-content: center; margin-top: 2px; }
+.site-banner .logo-line { stroke: var(--accent-text); }

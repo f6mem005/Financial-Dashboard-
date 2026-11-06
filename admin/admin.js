@@ -4,7 +4,6 @@
   'use strict';
   var app = document.getElementById('app');
   var state = { people: [], loaded: false, reveal: null, msg: '', bad: false, busy: false, name: '', code: '', focus: '' };
-  document.getElementById('site-name').textContent = location.hostname;
   var OFFLINE = 'Could not reach the server. Check your connection and try again.';
 
   // Easy to say and remember: 3 consonant+vowel syllables and 2 digits, 8 characters, e.g. "rakobu47".
