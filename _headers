@@ -1,7 +1,9 @@
 # Production response headers (Netlify / Cloudflare Pages "_headers" format).
 # A <meta> CSP cannot set frame-ancestors, so these must come from the host.
+# connect-src is 'self' here only so the admin page (/admin/) can reach its own API; the app page (index.html) keeps
+# connect-src 'none' through its own <meta> policy, and the two policies apply together.
 /*
-  Content-Security-Policy: default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; base-uri 'none'; form-action 'none'; object-src 'none'; frame-ancestors 'none'; require-trusted-types-for 'script'; trusted-types 'none'; upgrade-insecure-requests
+  Content-Security-Policy: default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'; frame-ancestors 'none'; require-trusted-types-for 'script'; trusted-types 'none'; upgrade-insecure-requests
   X-Content-Type-Options: nosniff
   X-Frame-Options: DENY
   Referrer-Policy: no-referrer

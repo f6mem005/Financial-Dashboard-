@@ -1,0 +1,8 @@
+{
+  "name": "finance-sense",
+  "private": true,
+  "description": "Finance Sense. Static site; the sign-in gate uses Netlify Functions and Netlify Blobs.",
+  "dependencies": {
+    "@netlify/blobs": "^11.1.7"
+  }
+}

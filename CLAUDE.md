@@ -48,10 +48,11 @@ GitHub, so a push does not deploy. If that ever changes, a push could publish, s
 - No `innerHTML`, `eval` or string timers. All DOM goes through the `h()` builder in `js/util.js`, which only
   allows listed tags and attributes; user text is only ever set as a text node.
 - Anything read back from `localStorage` or a CSV goes through `js/store.js` validation before use. Never trust it.
-- The sign-in gate (`netlify/`, `auth/`) fails closed, never caches or serves the site without a valid session, and keeps the
-  passcode and session secret only in Netlify environment variables, never in the repo, tests or logs. Any change there needs a
-  test and the independent security check.
-- Nothing leaves the browser: no network requests, no third-party scripts or fonts (CSP `connect-src 'none'`).
+- The sign-in gate (`netlify/`, `auth/`, `admin/`) fails closed and never serves the site without a valid session. `SESSION_SECRET` and
+  `ADMIN_PASSCODE` are set by the owner in Netlify, never by an assistant, and never appear in the repo, tests, logs or chat. Personal
+  passcodes are stored only as PBKDF2 hashes and shown once. Any change there needs a test and the independent security check.
+- Nothing leaves the browser: no network requests, no third-party scripts or fonts. The app page's own policy is `connect-src 'none'`
+  (the `_headers` value is `'self'` only so the admin page can reach its API; both apply together).
 - The storage key `fd.v1` stays the same, because renaming it would hide existing users' data. A schema change
   needs a migration. Unreadable or newer-version data is backed up, never overwritten.
 - Money math must stay honest: paying a bill moves real money (it is recorded as an expense), nothing is

@@ -1,7 +1,7 @@
 # Finance Sense
 
 A simple personal finance dashboard for young adults (18–30) with little budgeting experience.
-Static, dependency-free, no build step, no account, no network calls. Data stays in the browser (`localStorage`).
+Static, no build step. Your numbers stay in the browser (`localStorage`) and are never sent anywhere. The site itself sits behind a sign-in (see below), which is the only part that uses a server (Netlify Functions and Netlify Blobs).
 
 ## Run
 
@@ -10,38 +10,46 @@ Static, dependency-free, no build step, no account, no network calls. Data stays
 
 Serve over `http://` (the Content-Security-Policy meta tag is written for `'self'`).
 
-## Sign-in passcode (the whole site)
+## Sign-in (admin and personal passcodes)
 
-The same design as the Pari Passu app, with one shared passcode instead of people accounts. A small **gate**
-(`netlify/edge-functions/gate.ts`) runs in front of every request. Without a valid session cookie the browser is sent the
-sign-in page and **none of the site's files**. `netlify/functions/login.mjs` checks the passcode and sets the session cookie.
+The same design as the Pari Passu app. **You are the admin.** You sign in with an admin passcode; from the admin page you generate a personal passcode for each
+of the people who use it. A small **gate** (`netlify/edge-functions/gate.ts`) runs in front of every request: without a valid session cookie the browser is sent the sign-in
+page and **none of the site's files**. 
+**You set these two variables yourself, in Netlify** (Project configuration > Environment variables). No assistant should be given or set the values.
 
-| Environment variable (Netlify > Project configuration > Environment variables) | Purpose |
+| Variable | Purpose |
 |---|---|
-| `SESSION_SECRET` | Random string, 16+ characters, that signs the session cookie |
-| `SITE_PASSCODE` | The passcode people type, 8+ characters (an easy one like `rakobu47` is fine because logins are rate limited; use a longer one for anything sensitive) |
+| `SESSION_SECRET` | Random string, 16+ characters, that signs the session cookie. Different on every site |
+| `ADMIN_PASSCODE` | Your admin passcode, 8+ characters. Longer is better |
 
-Mark both as **secret** and scope them to **Functions**. **It fails closed:** if either is missing or too short, nobody can open
-the site (the page says it is not set up). Never put either value in the repo.
+**It fails closed:** if either is missing or too short, nobody can open the site (the page says it is "not set up yet"). Set both BEFORE the first deploy of the
+gate, scope them to Functions (and, if the sign-in page says "not set up yet", also to Builds and Runtime: the gate runs as an edge function), and redeploy after changing them.
+Never put either value in the repo. (On a plan that allows it, mark them secret.)
 
-**Order matters:** set both variables in Netlify BEFORE the first deploy that includes the gate, and use a different `SESSION_SECRET` and
-passcode on every site. Changing a variable needs a redeploy to take effect. Deployed without them, the site refuses everyone
-(the page says it is "not set up yet"). The gate also keeps the cookie tied to one site, so sites that share a secret still cannot
-open each other. After a deploy, check unsigned requests: `curl -sI <site>/` should show exactly one `content-security-policy`
-header and a 401, and `curl -s --path-as-is -o /dev/null -w '%{http_code}' '<site>/auth/..%2findex.html'` should not return the page.
+**Signing in:** everyone uses the same sign-in page. Admin: leave the name blank and type the admin passcode (you land on `/admin/`). Everyone else: their name and personal passcode.
 
-- The session is a signed cookie (HMAC-SHA256), `HttpOnly; Secure; SameSite=Lax` (Lax so a link from an email still arrives signed in), 14 days. Changing `SITE_PASSCODE` signs everyone out.
-- The passcode is compared through HMACs of both values (no timing leak). The login function is rate limited to 10 tries a minute per IP.
-- Only the site's own page can sign in (an `Origin` from another site is refused).
-- To change the passcode: edit `SITE_PASSCODE` in Netlify and redeploy (or trigger a deploy). Tell people the new one.
-- The wording on the sign-in page is in `netlify/shared/site.mjs`.
-- Test locally with `node tests/gate-server.mjs 8913` (the real gate, login and site files together; set both variables first).
+**The admin page (`/admin/`):** add a person (name + passcode), press **Generate** for an easy 8-character code like `rakobu47` (or type your own, 8+ characters),
+give a person a **new passcode** (the old one stops working at once), or **remove** them. A passcode is shown **once**, when you make it: only a salted PBKDF2 hash is stored
+(in Netlify Blobs), so it cannot be read again. Names are unique (any letter case).
+
+How it holds together:
+- The session is a signed cookie (HMAC-SHA256), `HttpOnly; Secure; SameSite=Lax` (Lax so a link from an email still arrives signed in), 14 days, tied to this site (`SITE.id`).
+- Changing `ADMIN_PASSCODE` signs the admin out. Admin sessions last 12 hours, people's 14 days. Resetting or removing a person ends their sessions: the gate checks the stored
+  record (through `/auth/session`) on **every request from a person**, and remembers a good answer for 10 seconds per cookie, so a removal takes effect within about 10 seconds, not instantly.
+  The cookie is named `__Host-fs_gate` (the browser only accepts it from this exact site over HTTPS).
+- The admin passcode is compared through HMACs of both values (no timing leak). Login is rate limited to 10 tries a minute per IP; unknown names take as long as known ones.
+- Admin tools need an admin cookie AND an `Origin` from this site. The `/admin` area is refused for everyone else however the path is written.
+- Wording on the sign-in page: `netlify/shared/site.mjs`. Local test: `node tests/gate-server.mjs 8913` (real gate and functions with an in-memory store) with both variables set.
+- Easy 8-character codes are fine because of the rate limit; use a longer one for anything sensitive.
+
+After a deploy, check from outside: `curl -sI <site>/` shows 401 and exactly one `content-security-policy` header;
+`curl -s --path-as-is -o /dev/null -w '%{http_code}' '<site>/auth/..%2findex.html'` is 401; and an unsigned `POST /` is refused.
 
 ## What to publish
 
-Stage exactly: `index.html`, `_headers`, `css/`, `js/`, `auth/gate.js`, `auth/gate.css`, `netlify.toml`, `netlify/edge-functions/gate.ts`,
-`netlify/functions/login.mjs`, `netlify/shared/auth.mjs`, `netlify/shared/site.mjs`. **Not** `tests/`, `README.md`, `CLAUDE.md`, `.git`.
-Your numbers still never leave the browser; the only new request is the passcode sent to this site's own login.
+Stage exactly: `index.html`, `_headers`, `css/`, `js/`, `auth/gate.js`, `auth/gate.css`, `admin/` (3 files), `netlify.toml`, `package.json`, `package-lock.json`,
+`netlify/edge-functions/gate.ts`, `netlify/functions/` (login, session, logout, admin), `netlify/shared/` (auth, people, http, site). **Not** `tests/`, `README.md`, `CLAUDE.md`, `.git`, `node_modules`.
+Your numbers still never leave the browser. The only requests are the sign-in itself (name and passcode to this site's own login), the per-request check that a person's passcode is still valid, and, for the admin, the admin page's own calls.
 
 ## Hosting (security)
 
@@ -61,7 +69,7 @@ Your numbers still never leave the browser; the only new request is the passcode
 | `js/store.js` | State shape, field-by-field validation of anything loaded, persistence |
 | `js/ideas.js` | **Suggestions** from your own numbers: how much you could set aside, a growth illustration for generic fund types, ways to spend less, duplicate finder, "what changed" check |
 | `js/backup.js` | Backup file for moving to another device: plain or passphrase-locked (AES-256-GCM, PBKDF2), re-validated on the way in |
-| `netlify/`, `auth/` | The sign-in gate (edge function), login function, shared auth code and the sign-in page's files. Not part of the app itself |
+| `netlify/`, `auth/`, `admin/` | The sign-in gate (edge function), the login/session/logout/admin functions, shared auth and people-store code, the sign-in page's files and the admin page. Not part of the app itself |
 | `js/csv.js` | Bank CSV parser/mapper with size and row limits |
 | `js/charts.js`, `js/ui.js`, `js/onboarding.js`, `js/views.js`, `js/ideas-view.js`, `js/transfer.js`, `js/app.js` | UI. All DOM is built with a text-only builder (no `innerHTML`). `app.js` also holds the first screen and the How it works screen, opened from a button in the top bar of every screen |
 | `js/sample.js` | Demo persona (relative to today, never saved) |

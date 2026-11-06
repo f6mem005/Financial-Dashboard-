@@ -22,3 +22,4 @@ h1, p { margin: 0; }
 .go { border: 0; background: var(--accent); color: var(--accent-text); border-radius: 12px; min-height: 50px; font: inherit; font-weight: 700; cursor: pointer; }
 .go:disabled { opacity: .5; cursor: default; }
 .err { color: var(--bad); font-weight: 600; min-height: 1.3em; }
+.hint { color: var(--text-2); font-size: .85rem; margin: -4px 0 4px; }
