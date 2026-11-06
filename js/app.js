@@ -124,41 +124,59 @@
     ['Take it with you', 'Everything stays in this browser. There is no account and nothing is uploaded. To use another device, save a backup file (you can lock it with a passphrase) and open it there.']
   ];
 
-  /* The first screen for new visitors, and also reachable later from Settings (inApp = true). */
+  var FEATURES = [
+    ['Safe to spend', 'See what you can spend until your next payday, after your bills.', TABS[0][2]],
+    ['Balance forecast', 'Watch where your balance is heading over the next months.', TABS[1][2]],
+    ['Ideas that fit you', 'How much you could set aside, and what saving it could grow into.', TABS[3][2]],
+    ['Spend less', 'Spot ways to cut back and charges that look doubled up.', TABS[2][2]]
+  ];
+
+  function logo() {
+    return h('svg', { viewBox: '0 0 32 32', class: 'logo', 'aria-hidden': 'true', width: 48, height: 48 },
+      h('circle', { cx: 16, cy: 16, r: 16, class: 'logo-bg' }),
+      h('path', { d: 'M7 21 L13 14 L18 18 L25 9', class: 'logo-line' }),
+      h('path', { d: 'M20 9 L25 9 L25 14', class: 'logo-line' }));
+  }
+
+  /* The landing page: a Finance Sense banner, what the app is for, what you get, how it works, and ONE Start button pinned to the
+     bottom. It is the first screen for anyone who has not finished setup, and is reopened from the top bar (inApp = true). */
   function howItWorks(inApp, resuming) {
     var S = app.S;
-    function startBtn() {
-      return resuming
+    var primary = inApp
+      ? UI.btn('Back', function () { app.ui.how = false; app.render(true); }, 'primary big')
+      : resuming
         ? UI.btn('Continue setup', function () { app.ui.started = true; app.ui.step = 0; app.render(true); }, 'primary big')
         : UI.btn('Get started', function () { app.startReal(); }, 'primary big');
-    }
-    // the main buttons sit at the top so nobody has to scroll to find Start; the main one is repeated after the text
-    function actions(withExtras) {
-      if (inApp) return h('div', { class: 'stack' }, UI.btn('Back', function () { app.ui.how = false; app.render(true); }, 'primary big'),
-        withExtras && S.mode === 'demo' ? UI.btn('Use my numbers', function () { app.startReal(); }, 'ghost big') : null);
-      return h('div', { class: 'stack' }, startBtn(),
-        withExtras ? UI.btn('Look at a demo first', function () { app.startDemo(); }, 'ghost big') : null,
-        withExtras && resuming ? UI.btn('Start over with a blank setup', function () { app.startReal(); }, 'link') : null,
-        withExtras ? h('details', { class: 'restore' }, h('summary', null, 'Already use Finance Sense on another device? Restore from a backup'), FD.transfer.restoreCard(app)) : null);
-    }
-    return h('main', { class: 'screen welcome', id: 'main' },
-      !inApp && FD.store.loadFailed() ? h('div', { class: 'note', role: 'alert' },
+    function link(text, fn) { return UI.btn(text, fn, 'landing-link'); }
+    var unreadable = !inApp && FD.store.loadFailed() ? h('div', { class: 'note', role: 'alert' },
         h('p', null, FD.store.backupOk()
           ? 'We couldn’t read your saved data. A raw copy was kept in this browser (keys fd.v1.bak / fd.v1.bak2), but starting over will replace what’s in fd.v1.'
           : 'We couldn’t read your saved data, and there wasn’t room to keep a copy. Starting over will replace it.'),
-        UI.btn('Delete the unreadable data and any copies', function () { if (root.confirm('Delete the unreadable data and its backup copies? This can’t be undone.')) app.wipe(); }, 'small danger')) : null,
-      h('h1', { class: 'q-title', tabindex: '-1', id: 'q-title' }, inApp ? 'How Finance Sense works' : 'Know where your money is going'),
-      h('p', { class: 'q-help' }, 'Finance Sense turns a few answers about your money into a plain picture of your month, then shows what you could do with what is left. No account, and your numbers stay on this device.'),
-      actions(true),
-      !inApp ? h('p', { class: 'hint' }, resuming ? 'Your earlier answers are saved. You can change or skip any question.' : 'Takes about 3 minutes. You can skip any question.') : null,
-      h('h2', { class: 'how-title' }, 'How it works'),
+        UI.btn('Delete the unreadable data and any copies', function () { if (root.confirm('Delete the unreadable data and its backup copies? This can’t be undone.')) app.wipe(); }, 'small danger')) : null;
+    var hero = h('header', { class: 'landing-hero' }, h('div', { class: 'landing-in' },
+      h('div', { class: 'brand-row' }, logo(), h('div', { class: 'brand-text' }, h('span', { class: 'brand-name' }, 'Finance Sense'), h('span', { class: 'brand-tag' }, 'Your money, made simple'))),
+      h('h1', { class: 'landing-title', tabindex: '-1', id: 'q-title' }, inApp ? 'How Finance Sense works' : 'Know where your money is going'),
+      h('p', { class: 'landing-intro' }, 'Finance Sense is a simple money dashboard for people who have never budgeted before. Answer a few quick questions and it shows what is safe to spend until payday, which bills are coming and where your balance is heading, then suggests how much you could set aside. No account, no bank connection, and your numbers stay on this device.'),
+      !inApp ? h('p', { class: 'landing-note' }, resuming ? 'Your earlier answers are saved. You can change or skip any question.' : 'Takes about 3 minutes. You can skip any question.') : null,
+      h('div', { class: 'landing-links' },
+        !inApp ? link('Look at a demo first', function () { app.startDemo(); }) : null,
+        !inApp && resuming ? link('Start over with a blank setup', function () { app.startReal(); }) : null,
+        inApp && S.mode === 'demo' ? link('Use my numbers', function () { app.startReal(); }) : null)));
+    var main = h('main', { class: 'screen welcome', id: 'main' },
+      h('h2', { class: 'section-title' }, 'What you get'),
+      h('ul', { class: 'features' }, FEATURES.map(function (f) {
+        return h('li', { class: 'feature' }, h('span', { class: 'feature-icon' }, icon(f[2])), h('div', null, h('strong', null, f[0]), h('p', { class: 'feature-text' }, f[1])));
+      })),
+      h('h2', { class: 'section-title' }, 'How it works'),
       h('ol', { class: 'how' }, STEPS.map(function (st, i) {
         return h('li', null, h('span', { class: 'how-n', 'aria-hidden': 'true' }, String(i + 1)), h('div', null, h('strong', null, st[0]), h('p', { class: 'how-text' }, st[1])));
       })),
       h('div', { class: 'card' }, h('h2', null, 'What it isn’t'),
         h('p', { class: 'q-help' }, 'It is not financial advice. It doesn’t connect to your bank, and it doesn’t recommend specific investments or products. Forecasts and growth illustrations are estimates built from what you enter, not promises.')),
-      actions(false),
+      !inApp && !resuming ? h('details', { class: 'restore' }, h('summary', null, 'Already use Finance Sense on another device? Restore from a backup'), FD.transfer.restoreCard(app)) : null,
+      !inApp && resuming ? h('details', { class: 'restore' }, h('summary', null, 'Restore from a backup instead'), FD.transfer.restoreCard(app)) : null,
       disclaimer());
+    return h('div', { class: 'landing' }, unreadable ? h('div', { class: 'landing-alert' }, unreadable) : null, hero, main, h('div', { class: 'cta-bar' }, primary));
   }
 
   function icon(d) {

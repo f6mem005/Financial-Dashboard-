@@ -25,16 +25,25 @@ const out = (k, v) => { if (!v) failed++; console.log((v ? 'PASS ' : 'FAIL ') + 
   /* ---------- first screen ---------- */
   await p.goto(URL);
   out('first screen is How it works: five steps, no tab bar', (await p.locator('ol.how li').count()) === 5 && (await p.locator('.tabs').count()) === 0 && /How it works/.test(await txt()));
-  out('first screen keeps Set up and Demo buttons and the not-advice note', (await p.locator('button:has-text("Get started")').count()) === 2 && (await p.locator('button:has-text("Look at a demo first")').count()) === 1 && /not financial advice/i.test(await txt()));
+  out('first screen keeps Set up and Demo buttons and the not-advice note', (await p.locator('button:has-text("Get started")').count()) === 1 && (await p.locator('button:has-text("Look at a demo first")').count()) === 1 && /not financial advice/i.test(await txt()));
   out('restore option is on the first screen', (await p.locator('summary:has-text("Restore from a backup")').count()) === 1);
 
   // landing page first, Start leads to the questions (also for someone who left setup half done)
   out('the Start button is visible without scrolling (phone height)', await p.evaluate(() => { const b = [...document.querySelectorAll('button')].find((x) => x.textContent === 'Get started'); return b.getBoundingClientRect().bottom < innerHeight; }));
+  out('banner says Finance Sense, with the logo', (await p.textContent('.landing-hero .brand-name')) === 'Finance Sense' && (await p.locator('.landing-hero svg.logo').count()) === 1);
+  out('an intro explains what the app is for', /simple money dashboard/.test(await p.textContent('.landing-hero .landing-intro')) && /safe to spend until payday/.test(await p.textContent('.landing-hero .landing-intro')));
+  for (let i = 0; i < 6 && !(await p.evaluate(() => document.activeElement && document.activeElement.classList.contains('landing-link'))); i++) await p.keyboard.press('Tab');
+  out('the keyboard focus ring on the banner links is white (visible on the blue)', await p.evaluate(() => { const e = document.activeElement; return !!e && e.classList.contains('landing-link') && getComputedStyle(e).outlineColor === 'rgb(255, 255, 255)'; }));
+  out('a focused control is never left under the pinned bar (scroll padding)', await p.evaluate(() => parseFloat(getComputedStyle(document.documentElement).scrollPaddingBottom) >= 100));
+  out('exactly ONE start button on the page, pinned so it is always in reach', (await p.locator('button:has-text("Get started"), button:has-text("Continue setup")').count()) === 1 && (await p.locator('.cta-bar button').count()) === 1);
+  out('feature cards and steps are shown', (await p.locator('ul.features li').count()) === 4 && (await p.locator('ol.how li').count()) === 5);
+  for (const w of [320, 390, 1000]) { await p.setViewportSize({ width: w, height: 700 }); out('no sideways scrolling on the landing page at ' + w + 'px', await p.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)); }
+  await p.setViewportSize({ width: 390, height: 900 });
   await p.click('button:has-text("Get started")');
   out('Get started takes a new visitor to question 1', /1 of 13/.test(await txt()) && /How often do you get paid/.test(await txt()));
   await p.click('button:has-text("Every 2 weeks")');
   await p.reload();
-  out('someone with setup half done still lands on How it works first', /How it works/.test(await txt()) && (await p.locator('button:has-text("Continue setup")').count()) === 2 && (await p.locator('summary:has-text("Restore from a backup")').count()) === 1 && !/1 of 13/.test(await txt()) && /earlier answers are saved/.test(await txt()));
+  out('someone with setup half done still lands on How it works first', /How it works/.test(await txt()) && (await p.locator('button:has-text("Continue setup")').count()) === 1 && (await p.locator('summary:has-text("Restore from a backup")').count()) === 1 && !/1 of 13/.test(await txt()) && /earlier answers are saved/.test(await txt()));
   await p.click('button:has-text("Continue setup")');
   out('Continue setup goes to the questions with the saved answer kept', /1 of 13/.test(await txt()) && (await p.locator('.option.on:has-text("Every 2 weeks")').count()) === 1);
   await p.reload(); await p.click('button:has-text("Start over with a blank setup")');
@@ -44,6 +53,7 @@ const out = (k, v) => { if (!v) failed++; console.log((v ? 'PASS ' : 'FAIL ') + 
   await p.evaluate(() => localStorage.setItem('fd.v1', '{not json'));
   await p.reload();
   out('unreadable data shows its notice on the landing page', /couldn.t read your saved data/.test(await txt()));
+  out('the unreadable-data notice sits above the banner, not buried below it', await p.evaluate(() => { const n = document.querySelector('.landing-alert'), h = document.querySelector('.landing-hero'); return !!n && !!h && (n.compareDocumentPosition(h) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0; }));
   const half = await p.evaluate(async () => { const s = FD.store.defaultState(); s.mode = 'real'; s.answers = { payFreq: 'weekly' }; return (await FD.backup.make(s, '')).text; });
   await p.click('summary:has-text("Restore from a backup")');
   await p.setInputFiles('input[aria-label="Choose a Finance Sense backup file"]', { name: 'half.json', mimeType: 'application/json', buffer: Buffer.from(half) });
@@ -190,7 +200,7 @@ const out = (k, v) => { if (!v) failed++; console.log((v ? 'PASS ' : 'FAIL ') + 
   await tab('Activity');
   out('a How it works button is in the top bar of every screen', (await p.locator('header.topbar button:has-text("How it works")').count()) === 1);
   await p.click('header.topbar button:has-text("How it works")');
-  out('How it works opens from the top bar and has a Back button', /How Finance Sense works/.test(await txt()) && (await p.locator('button:has-text("Back")').count()) === 2 && (await p.locator('.tabs').count()) === 0);
+  out('How it works opens from the top bar and has a Back button', /How Finance Sense works/.test(await txt()) && (await p.locator('button:has-text("Back")').count()) === 1 && (await p.locator('.tabs').count()) === 0);
   await p.click('button:has-text("Back")');
   out('Back returns to the screen you were on', /Activity/.test(await p.textContent('h1')));
   await tab('Settings');
