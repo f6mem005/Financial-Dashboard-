@@ -265,6 +265,7 @@ test('gate: every page the gate itself serves declares the home-screen icon, man
     const hrefs = [...html.matchAll(/<link rel="(?:icon|apple-touch-icon|manifest)"[^>]*href="([^"]+)"/g)].map((m) => m[1]); assert.ok(hrefs.length >= 3, name);
     for (const h of hrefs) { assert.ok(h.startsWith('/'), name + ': absolute path, because this page is served at any address: ' + h); assert.ok(open.includes(h), name + ': ' + h + ' must be reachable without a cookie'); }
   }
+  assert.match(signInPage(false), /<link rel="apple-touch-icon" href="\/icons\/apple-touch-icon\.png">/, 'the "not set up yet" page declares the icon too');
   const csp = r.headers.get('content-security-policy'); assert.match(csp, /manifest-src 'self'(;|$)/); assert.match(csp, /img-src 'self'/); assert.doesNotMatch(csp, /https?:|\*/);
 });
 
