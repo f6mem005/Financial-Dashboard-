@@ -45,6 +45,16 @@ How it holds together:
 After a deploy, check from outside: `curl -sI <site>/` shows 401 and exactly one `content-security-policy` header;
 `curl -s --path-as-is -o /dev/null -w '%{http_code}' '<site>/auth/..%2findex.html'` is 401; and an unsigned `POST /` is refused.
 
+## Installing it like an app
+
+The site is an installable web app: `manifest.webmanifest`, four icons in `icons/` (drawn by `scripts/make-icons.py`; `--no-calculator` gives the plainer version),
+and the head tags in `index.html`. Settings has an **Install on your phone** card (`js/install.js`): a button where the browser offers one (Chrome, Edge),
+plain steps for iPhone Safari, and a warning that an installed iPhone app keeps its own storage and can open empty (use the backup to move your numbers).
+There is **no service worker and no offline mode**, so the app still needs a connection to open.
+Because a browser fetches the manifest and icons without cookies, those five exact paths are on the sign-in gate's open list (`OPEN` in `netlify/edge-functions/gate.ts`);
+they are public images and one small JSON file. The page's policy adds `manifest-src 'self'` (in the page and in `_headers`).
+After a deploy, check `curl -s <site>/manifest.webmanifest` returns the JSON without signing in, and that its content type is `application/manifest+json` (or JSON).
+
 ## Telling people to refresh after an update
 
 Every deploy gets a build id. The page knows the id it loaded (`js/version.js`); while it is open, `js/update.js` asks `/version.json` which
@@ -58,7 +68,7 @@ The page's security policy allows connections to its own site only (`connect-src
 
 ## What to publish
 
-Stage exactly: `index.html`, `_headers`, `css/`, `js/`, `auth/gate.js`, `auth/gate.css`, `admin/` (3 files), `netlify.toml`, `package.json`, `package-lock.json`,
+Stage exactly: `index.html`, `_headers`, `manifest.webmanifest`, `icons/` (4 PNGs), `css/`, `js/` (including `js/install.js`), `auth/gate.js`, `auth/gate.css`, `admin/` (3 files), `netlify.toml`, `package.json`, `package-lock.json`,
 `netlify/edge-functions/gate.ts`, `netlify/functions/` (login, session, logout, admin), `netlify/shared/` (auth, people, http, site), then stamp it (see above). **Not** `tests/`, `README.md`, `CLAUDE.md`, `.git`, `node_modules`.
 Your numbers still never leave the browser. The only requests are the sign-in itself (name and passcode to this site's own login), the per-request check that a person's passcode is still valid, and, for the admin, the admin page's own calls.
 
@@ -90,7 +100,7 @@ passcodes and secrets live only in Netlify).
 | `netlify/`, `auth/`, `admin/` | The sign-in gate (edge function), the login/session/logout/admin functions, shared auth and people-store code, the sign-in page's files and the admin page. Not part of the app itself |
 | `js/csv.js` | Bank CSV parser/mapper with size and row limits |
 | `js/version.js`, `js/update.js`, `scripts/stamp-version.mjs` | The "new version, please refresh" bar and the deploy-time build stamp |
-| `js/charts.js`, `js/ui.js`, `js/onboarding.js`, `js/views.js`, `js/ideas-view.js`, `js/transfer.js`, `js/app.js` | UI. All DOM is built with a text-only builder (no `innerHTML`). `app.js` also holds the first screen and the How it works screen, opened from a button in the top bar of every screen |
+| `js/charts.js`, `js/ui.js`, `js/onboarding.js`, `js/views.js`, `js/ideas-view.js`, `js/transfer.js`, `js/install.js`, `js/app.js` | UI. All DOM is built with a text-only builder (no `innerHTML`). `app.js` also holds the first screen and the How it works screen, opened from a button in the top bar of every screen |
 | `js/sample.js` | Demo persona (relative to today, never saved) |
 
 ## Stubbed or simplified in v1

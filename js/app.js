@@ -156,6 +156,33 @@
 
   function logo() { return UI.logo(48); }
 
+  // Three plain facts shown under the intro (text only: nothing here is a button or a card).
+  var FACTS = [['About 3 min', 'to set up'], ['No account', 'or bank link'], ['On device', 'nothing uploaded']];
+
+  /* A picture of the dashboard with example numbers. It is decoration only: hidden from screen readers, no buttons or links inside it,
+     and the caption says the numbers are an example. It must never look or behave like something you can tap. */
+  function phonePreview() {
+    function row(name, when, amt) { return h('div', { class: 'ph-row' }, h('span', { class: 'ph-name' }, name), h('span', { class: 'ph-when' }, when), h('span', { class: 'ph-amt' }, amt)); }
+    var spark = h('svg', { viewBox: '0 0 120 36', class: 'ph-spark', width: 120, height: 36 },
+      h('polyline', { points: '0,26 14,24 28,27 42,20 56,22 70,14 84,17 98,9 120,6', class: 'ph-line', fill: 'none', 'stroke-width': 2.4, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }));
+    var track = h('svg', { viewBox: '0 0 200 6', class: 'ph-track', width: 200, height: 6 },
+      h('rect', { x: 0, y: 0, width: 200, height: 6, class: 'ph-track-bg' }), h('rect', { x: 0, y: 0, width: 124, height: 6, class: 'ph-track-fill' }));
+    return h('div', { class: 'landing-phone-wrap' },
+      h('div', { class: 'phone', 'aria-hidden': 'true' },
+        h('div', { class: 'ph-notch' }),
+        h('div', { class: 'ph-body' },
+          h('span', { class: 'ph-brand' }, 'Finance Sense'),
+          h('span', { class: 'ph-label' }, 'Safe to spend until payday'),
+          h('span', { class: 'ph-big' }, '$412'),
+          track,
+          h('span', { class: 'ph-sub' }, '6 days to go. Bills already set aside.'),
+          h('span', { class: 'ph-label ph-gap' }, 'Coming up'),
+          row('Rent', 'Fri', '$900'), row('Phone', 'Mon', '$45'), row('Streaming', 'Wed', '$12'),
+          h('span', { class: 'ph-label ph-gap' }, 'Balance forecast'),
+          spark)),
+      h('p', { class: 'landing-caption' }, 'A peek at your dashboard, with example numbers. Yours are built from your answers.'));
+  }
+
   /* The landing page: a Finance Sense banner, what the app is for, what you get, how it works, and ONE Start button pinned to the
      bottom. It is the first screen for anyone who has not finished setup, and is reopened from the top bar (inApp = true). */
   function howItWorks(inApp, resuming) {
@@ -179,14 +206,16 @@
       h('h1', { class: 'landing-title', tabindex: '-1', id: 'q-title' }, inApp ? 'How Finance Sense works' : 'Know where your money is going'),
       h('p', { class: 'landing-intro' }, 'Finance Sense is a simple money dashboard that makes managing your money clearer and easier. Answer a few quick questions and it shows what is safe to spend until payday, which bills are coming and where your balance is heading, then suggests how much you could set aside. No account, no bank connection, and your numbers stay on this device.'),
       !inApp ? h('p', { class: 'landing-note' }, resuming ? 'Your earlier answers are saved. You can change any of them.' : 'Takes about 3 minutes. Nothing to enter? Choose $0 or N/A.') : null,
+      !inApp ? h('ul', { class: 'landing-stats' }, FACTS.map(function (f) { return h('li', null, h('strong', null, f[0]), h('span', null, f[1])); })) : null,
       h('div', { class: 'landing-links' },
         !inApp ? link('Look at a demo first', function () { app.startDemo(); }) : null,
         !inApp && resuming ? link('Start over with a blank setup', function () { app.startReal(); }) : null,
-        inApp && S.mode === 'demo' ? link('Use my numbers', function () { app.startReal(); }) : null)));
+        inApp && S.mode === 'demo' ? link('Use my numbers', function () { app.startReal(); }) : null),
+      !inApp ? phonePreview() : null));
     var main = h('main', { class: 'screen welcome', id: 'main' },
       h('h2', { class: 'section-title' }, 'What you get'),
-      h('ul', { class: 'features' }, FEATURES.map(function (f) {
-        return h('li', { class: 'feature' }, h('span', { class: 'feature-icon' }, icon(f[2])), h('div', null, h('strong', null, f[0]), h('p', { class: 'feature-text' }, f[1])));
+      h('ul', { class: 'benefits' }, FEATURES.map(function (f) {
+        return h('li', { class: 'benefit' }, h('span', { class: 'benefit-icon' }, icon(f[2])), h('div', null, h('strong', null, f[0]), h('p', { class: 'benefit-text' }, f[1])));
       })),
       h('h2', { class: 'section-title' }, 'How it works'),
       h('ol', { class: 'how' }, STEPS.map(function (st, i) {
@@ -228,6 +257,12 @@
   });
 
   if (app.S.mode === 'real' && FD.store.wasMigrated()) FD.store.save(app.S); // keep the one-time migration from drifting day to day
+
+  // The browser may offer to install the app at any moment; if the Settings card is showing (and nothing is being typed), redraw it.
+  FD.install.init(function () {
+    var a = doc.activeElement;
+    if (app.S.mode !== 'fresh' && (app.S.onboarded || app.S.mode === 'demo') && app.ui.tab === 'settings' && !app.ui.how && app.ui.editing === null && !(a && /^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName))) app.render();
+  });
 
   FD.app = app;
   function boot() { app.render(); }

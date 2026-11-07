@@ -203,12 +203,12 @@ test('gate: no cookie means the sign-in page and the site is NEVER fetched', asy
 });
 test('gate: only the exact open paths pass without a cookie; look-alikes are gated', async () => {
   reset(); const ctx = next();
-  for (const p of ['/auth/login', '/auth/logout', '/auth/session', '/auth/admin', '/auth/gate.js', '/auth/gate.css']) await gate(req(p), ctx);
-  assert.equal(ctx.calls, 6);
-  for (const p of ['/auth/', '/auth', '/auth/x', '/auth/..%2findex.html', '/auth/%2e%2e%2findex.html', '/auth/%2fx', '/auth/gate.js/', '/auth/gate.jsx', '/auth//login', '/AUTH/login', '/auth/login/', '/auth/admin/', '/auth/admin/people', '/.netlify/functions/login', '/.netlify/functions/admin']) {
+  for (const p of ['/auth/login', '/auth/logout', '/auth/session', '/auth/admin', '/auth/gate.js', '/auth/gate.css', '/manifest.webmanifest', '/icons/icon-192.png', '/icons/icon-512.png', '/icons/icon-maskable-512.png', '/icons/apple-touch-icon.png']) await gate(req(p), ctx);
+  assert.equal(ctx.calls, 11);
+  for (const p of ['/manifest.webmanifest/', '/manifest.webmanifest.bak', '/icons/', '/icons/icon-192.png/', '/icons/icon-192.png%2f..%2findex.html', '/icons/..%2findex.html', '/icons/x.png', '/ICONS/icon-192.png', '/auth/', '/auth', '/auth/x', '/auth/..%2findex.html', '/auth/%2e%2e%2findex.html', '/auth/%2fx', '/auth/gate.js/', '/auth/gate.jsx', '/auth//login', '/AUTH/login', '/auth/login/', '/auth/admin/', '/auth/admin/people', '/.netlify/functions/login', '/.netlify/functions/admin']) {
     const c2 = next(), r = await gate(req(p), c2); assert.equal(r.status, 401, p); assert.equal(c2.calls, 0, p);
   }
-  assert.equal(gateConfig.path, '/*'); assert.deepEqual(gateConfig.excludedPath, ['/auth/login', '/auth/logout', '/auth/session', '/auth/admin', '/auth/gate.js', '/auth/gate.css']);
+  assert.equal(gateConfig.path, '/*'); assert.deepEqual(gateConfig.excludedPath, ['/auth/login', '/auth/logout', '/auth/session', '/auth/admin', '/auth/gate.js', '/auth/gate.css', '/manifest.webmanifest', '/icons/icon-192.png', '/icons/icon-512.png', '/icons/icon-maskable-512.png', '/icons/apple-touch-icon.png']);
 });
 test('gate: a person with a good code is let in; every request is checked against the stored record', async () => {
   reset(); await P.createPerson('Ana', 'rakobu47'); const { cookie } = await signInAs('Ana', 'rakobu47'); const calls = withSessionCheck(viaSessionFn);

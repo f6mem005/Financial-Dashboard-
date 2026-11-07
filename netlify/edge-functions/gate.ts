@@ -19,7 +19,10 @@ const HEADERS = {
 };
 // Exactly what the sign-in page and the admin tools need. Anything else, even under /auth/, needs a session.
 // (The four functions check their own sign-in; the two files are the sign-in page's script and style.)
-const OPEN = ["/auth/login", "/auth/logout", "/auth/session", "/auth/admin", "/auth/gate.js", "/auth/gate.css"];
+// Open without a session: the sign-in itself, and the install files. A browser fetches the manifest and the icons WITHOUT cookies, so they must be
+// reachable signed out or "install" fails. They are public images and one small JSON file (no numbers, no people). Exact paths only.
+const OPEN = ["/auth/login", "/auth/logout", "/auth/session", "/auth/admin", "/auth/gate.js", "/auth/gate.css",
+  "/manifest.webmanifest", "/icons/icon-192.png", "/icons/icon-512.png", "/icons/icon-maskable-512.png", "/icons/apple-touch-icon.png"];
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c] as string));
 
 // The Finance Sense banner, the same on every page this gate serves.
