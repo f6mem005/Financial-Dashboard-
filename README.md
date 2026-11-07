@@ -53,9 +53,12 @@ plain steps for iPhone Safari, and a warning that an installed iPhone app keeps 
 There is **no service worker and no offline mode**, so the app still needs a connection to open.
 Because a browser fetches the manifest and icons without cookies, those five exact paths are on the sign-in gate's open list (`OPEN` in `netlify/edge-functions/gate.ts`);
 they are public images and one small JSON file. The page's policy adds `manifest-src 'self'` (in the page and in `_headers`).
-After a deploy, check `curl -s <site>/manifest.webmanifest` returns the JSON without signing in, and that its content type is `application/manifest+json` (or JSON).
+After a deploy, check `curl -s <site>/manifest.webmanifest` returns the JSON without signing in.
+**Known, verified on the live site (2026-11-07):** Netlify serves `.webmanifest` as `application/octet-stream`. Chromium parses it fine anyway (checked with `Page.getAppManifest` against a server sending that type: no errors, no installability errors),
+so Chrome and Edge are unaffected; other browsers are not verified. To fix it, add a `Content-Type: application/manifest+json` rule for `/manifest.webmanifest` to `_headers` and confirm there is still only one `Content-Type` header after the deploy.
+**Also known:** Netlify's open-path matching ignores a trailing slash, so `<site>/manifest.webmanifest/` and `<site>/icons/icon-192.png/` return the same public file (and so do the existing `/auth/gate.css/` and `/auth/gate.js/`). Same bytes, no HTML, nothing private, so this is harmless.
 Also check the look-alikes stay gated: `curl -s -o /dev/null -w '%{http_code}\n'` on `<site>/icons/`, `<site>/icons/icon-192.png/`, `<site>/ICONS/icon-192.png`, `<site>/manifest.webmanifest/` and
-`--path-as-is '<site>/icons/..%2findex.html'` must each print 401 or 404, never 200 (and never the app's `index.html`).
+`--path-as-is '<site>/icons/..%2findex.html'` must each print 401 or 404, never 200 (and never the app's `index.html`), except the two trailing-slash forms noted above, which may print 200 with the same public file.
 
 ## Telling people to refresh after an update
 
