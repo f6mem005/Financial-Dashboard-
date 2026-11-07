@@ -316,7 +316,8 @@ html { scroll-padding-bottom: 7rem; }   /* a focused control is never left under
   .with-phone .landing-in > .landing-phone-wrap { grid-column: 2; grid-row: 1 / span 8; margin-top: 0; }
   /* the text below lines up with the hero's left edge but keeps a readable line length */
   .with-phone .welcome { max-width: 940px; }
-  .with-phone .welcome > * { max-width: 720px; }
+  .with-phone .welcome > * { max-width: 720px; margin-left: 0; margin-right: 0; }
 }
+.install-slot:focus { outline: none; }
 .install-steps { display: flex; flex-direction: column; gap: 8px; padding-left: 18px; list-style: disc; font-size: .92rem; color: var(--text-2); }
 @media (max-width: 379px) { .landing-stats { flex-direction: column; gap: 8px; } .landing-stats li { padding: 0; border-left: 0; } }

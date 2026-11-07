@@ -55,10 +55,13 @@ const done = { v: 1, mode: 'real', onboarded: true, answers: { payFreq: 'biweekl
   const seed = `if (!sessionStorage.getItem('s')) { localStorage.setItem('fd.v1', ${JSON.stringify(JSON.stringify(done))}); sessionStorage.setItem('s', '1'); }`;
   p = await open({}, seed); await p.click('.tab:has-text("Settings")');
   out('install: Settings has the card, with steps for iPhone, Android and a computer, and the storage warning', /Install on your phone/.test(await p.innerText('main')) && (await p.locator('.install-steps li').count()) === 3 && /keeps its own storage/.test(await p.innerText('main')) && /no offline mode/i.test(await p.innerText('main')));
+  for (let i = 0; i < 4; i++) { await p.click('.tab:has-text("Home")'); await p.click('.tab:has-text("Settings")'); }
+  out('install: going back to Settings again and again does not pile up old cards', (await p.evaluate(() => window.FD.install.slotCount())) === 1);
   await p.evaluate(() => { window.__prompted = 0; const e = new Event('beforeinstallprompt', { cancelable: true }); e.prompt = () => { window.__prompted++; return Promise.resolve(); }; e.userChoice = Promise.resolve({ outcome: 'accepted' }); window.dispatchEvent(e); });
   await p.waitForTimeout(250);
   out('install: when the browser offers it, the card shows an Install button instead of the steps', (await p.locator('button:has-text("Install Finance Sense")').count()) === 1 && (await p.locator('.install-steps').count()) === 0);
   await p.click('button:has-text("Install Finance Sense")'); await p.waitForTimeout(250);
+  out('install: after pressing Install, keyboard focus stays on the card instead of falling to the top of the page', await p.evaluate(() => document.activeElement && document.activeElement.classList.contains('install-slot')));
   out('install: pressing it opens the browser prompt once, and once accepted the card says it is installed (not "install it" again)', (await p.evaluate(() => window.__prompted)) === 1 && (await p.locator('button:has-text("Install Finance Sense")').count()) === 0 && /Installed\./.test(await p.innerText('.install-slot')) && (await p.locator('.install-steps').count()) === 0);
   await p.fill('input[aria-label="Current balance"]', '321');
   await p.evaluate(() => { const e = new Event('beforeinstallprompt', { cancelable: true }); e.prompt = () => Promise.resolve(); e.userChoice = Promise.resolve({}); window.dispatchEvent(e); });
@@ -87,7 +90,12 @@ const done = { v: 1, mode: 'real', onboarded: true, answers: { payFreq: 'biweekl
   await p.ctx.close();
   p = await open({ viewport: { width: 1200, height: 800 } });
   const hx = await p.evaluate(() => [document.querySelector('.landing-title').getBoundingClientRect().left, document.querySelector('.welcome .section-title').getBoundingClientRect().left]);
-  out('landing: on a wide screen the hero text and the sections below start at the same left edge', Math.abs(hx[0] - hx[1]) <= 2);
+  const dl = await p.evaluate(() => document.querySelector('.disclaimer').getBoundingClientRect().left);
+  out('landing: on a wide screen the hero text, the sections and the disclaimer start at the same left edge', Math.abs(hx[0] - hx[1]) <= 2 && Math.abs(hx[0] - dl) <= 2);
+  await p.ctx.close();
+  p = await open({ viewport: { width: 820, height: 800 } });
+  const e2 = await p.evaluate(() => [document.querySelector('.landing-title').getBoundingClientRect().left, document.querySelector('.disclaimer').getBoundingClientRect().left]);
+  out('landing: at 820px too, the disclaimer lines up with the title', Math.abs(e2[0] - e2[1]) <= 2);
   await p.ctx.close();
   p = await open({ viewport: { width: 360, height: 700 } });
   out('landing: at 360px the three key facts stack or fit without a stray divider', await p.evaluate(() => { const l = [...document.querySelectorAll('.landing-stats li')]; const tops = new Set(l.map((x) => Math.round(x.getBoundingClientRect().top))); return tops.size === 1 || l.every((x) => getComputedStyle(x).borderLeftWidth === '0px'); }));

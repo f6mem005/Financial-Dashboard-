@@ -23,8 +23,10 @@
     var box = h('div', { class: 'stack' },
       h('p', { class: 'q-help' }, 'Add Finance Sense to your home screen so it opens like an app, full screen and with its own icon. It is the same site: nothing comes from an app store and nothing is uploaded.'));
     if (offer) {
-      box.appendChild(UI.btn('Install Finance Sense', function () {
-        var e = offer; offer = null; refresh();
+      box.appendChild(UI.btn('Install Finance Sense', function (ev) {
+        var e = offer, mine = ev && ev.target && ev.target.closest ? ev.target.closest('.install-slot') : null;
+        offer = null; refresh();
+        if (mine && mine.focus) mine.focus({ preventScroll: true });   // the button is gone after the redraw: keep keyboard focus on the card
         try {
           Promise.resolve(e.prompt()).catch(function () { /* the browser declined to show it */ });
           Promise.resolve(e.userChoice).then(function (c) { if (c && c.outcome === 'accepted') installed = true; refresh(); }, refresh);
@@ -51,8 +53,12 @@
     root.addEventListener('beforeinstallprompt', function (e) { e.preventDefault(); offer = e; installed = false; refresh(); });   // a fresh offer means it is not installed (any more)
     root.addEventListener('appinstalled', function () { offer = null; installed = true; refresh(); });
   }
-  function card() { var slot = h('div', { class: 'install-slot' }); fill(slot); slots.push(slot); return slot; }
+  function card() {
+    var slot = h('div', { class: 'install-slot', tabindex: '-1' }); fill(slot);
+    slots = slots.filter(function (s) { return root.document && root.document.contains(s); });   // forget cards from earlier Settings screens
+    slots.push(slot); return slot;
+  }
 
-  FD.install = { init: init, card: card, refresh: refresh, standalone: standalone };
+  FD.install = { init: init, card: card, refresh: refresh, standalone: standalone, slotCount: function () { return slots.length; } };
   if (typeof module !== 'undefined' && module.exports) module.exports = FD;
 })(typeof window !== 'undefined' ? window : globalThis);
