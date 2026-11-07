@@ -8,7 +8,7 @@ import { SITE } from "../shared/site.mjs";
 const HEADERS = {
   "content-type": "text/html; charset=utf-8",
   "cache-control": "private, no-store",
-  "content-security-policy": "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'; frame-ancestors 'none'",
+  "content-security-policy": "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'; manifest-src 'self'; frame-ancestors 'none'",
   "x-content-type-options": "nosniff",
   "x-frame-options": "DENY",
   "referrer-policy": "same-origin",
@@ -24,6 +24,11 @@ const HEADERS = {
 const OPEN = ["/auth/login", "/auth/logout", "/auth/session", "/auth/admin", "/auth/gate.js", "/auth/gate.css",
   "/manifest.webmanifest", "/icons/icon-192.png", "/icons/icon-512.png", "/icons/icon-maskable-512.png", "/icons/apple-touch-icon.png"];
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c] as string));
+
+// What a phone needs to see on EVERY page, including this one, to put the site on the home screen with the real icon. Without these, iOS shows a plain
+// letter tile when someone adds the sign-in page to their home screen. Absolute paths: this page is served at whatever address was asked for.
+// All of these paths are on the OPEN list above (a phone fetches them without cookies).
+const iconTags = `<meta name="theme-color" content="#1d4f9f"><meta name="apple-mobile-web-app-title" content="Finance Sense"><link rel="manifest" href="/manifest.webmanifest"><link rel="icon" type="image/png" href="/icons/icon-192.png"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">`;
 
 // The Finance Sense banner, the same on every page this gate serves.
 const band = () => `<header class="band"><div class="band-in"><svg viewBox="0 0 32 32" class="logo" aria-hidden="true" width="44" height="44"><circle cx="16" cy="16" r="16" class="logo-bg"/><path d="M7 21 L13 14 L18 18 L25 9" class="logo-line"/><path d="M20 9 L25 9 L25 14" class="logo-line"/></svg>
@@ -43,12 +48,12 @@ export function signInPage(configured: boolean) {
     : `<p class="err" role="alert">This site is not set up yet, so it cannot be opened right now.</p>`;
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex">
-<title>${esc(SITE.title)}</title><link rel="stylesheet" href="/auth/gate.css"></head>
+<title>${esc(SITE.title)}</title>${iconTags}<link rel="stylesheet" href="/auth/gate.css"></head>
 <body>${band()}
 <main class="gate"><h1>${esc(SITE.heading)}</h1><p class="blurb">${esc(SITE.blurb)}</p>${body}</main>
 <script src="/auth/gate.js"></script></body></html>`;
 }
-const adminsOnly = () => `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex"><title>${esc(SITE.title)}</title><link rel="stylesheet" href="/auth/gate.css"></head><body>${band()}<main class="gate"><h1>Admins only</h1><p class="blurb">This part of the site is for the administrator.</p></main></body></html>`;
+const adminsOnly = () => `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex"><title>${esc(SITE.title)}</title>${iconTags}<link rel="stylesheet" href="/auth/gate.css"></head><body>${band()}<main class="gate"><h1>Admins only</h1><p class="blurb">This part of the site is for the administrator.</p></main></body></html>`;
 
 const decode = (s: string) => { try { return decodeURIComponent(s); } catch { return null; } };
 

@@ -254,6 +254,20 @@ test('gate: HEAD gets headers only; the sign-in page has no inline script or sty
   assert.ok(!html.includes(env.ADMIN_PASSCODE) && !html.includes(env.SESSION_SECRET));
 });
 
+test('gate: every page the gate itself serves declares the home-screen icon, manifest and theme colour, all on the open list, and its policy allows them', async () => {
+  reset(); const open = gateConfig.excludedPath;
+  const r = await gate(req('/some/deep/address', { headers: { accept: 'text/html' } }), next()); assert.equal(r.status, 401); const pages = [['sign-in', await r.text()]];
+  await P.createPerson('Ana', 'rakobu47'); const { cookie } = await signInAs('Ana', 'rakobu47'); withSessionCheck(viaSessionFn);
+  const r2 = await gate(req('/admin/', { cookie, headers: { accept: 'text/html' } }), next()); assert.equal(r2.status, 403); pages.push(['admins-only', await r2.text()]);
+  for (const [name, html] of pages) {
+    assert.match(html, /<link rel="apple-touch-icon" href="\/icons\/apple-touch-icon\.png">/, name + ' page: the iPhone home-screen icon (without it iOS shows a plain letter tile)');
+    assert.match(html, /<link rel="manifest" href="\/manifest\.webmanifest">/, name); assert.match(html, /<meta name="theme-color" content="#[0-9a-f]{6}">/i, name);
+    const hrefs = [...html.matchAll(/<link rel="(?:icon|apple-touch-icon|manifest)"[^>]*href="([^"]+)"/g)].map((m) => m[1]); assert.ok(hrefs.length >= 3, name);
+    for (const h of hrefs) { assert.ok(h.startsWith('/'), name + ': absolute path, because this page is served at any address: ' + h); assert.ok(open.includes(h), name + ': ' + h + ' must be reachable without a cookie'); }
+  }
+  const csp = r.headers.get('content-security-policy'); assert.match(csp, /manifest-src 'self'(;|$)/); assert.match(csp, /img-src 'self'/); assert.doesNotMatch(csp, /https?:|\*/);
+});
+
 /* ---------------- fixes from review ---------------- */
 test('gate: a removed or reset person gets nothing, whatever headers the request carries (curl-style Accept, no Accept, any method)', async () => {
   reset(); const rec = await P.createPerson('Ana', 'rakobu47'); const { cookie } = await signInAs('Ana', 'rakobu47'); withSessionCheck(viaSessionFn);

@@ -51,6 +51,9 @@ The site is an installable web app: `manifest.webmanifest`, four icons in `icons
 and the head tags in `index.html`. Settings has an **Install on your phone** card (`js/install.js`): a button where the browser offers one (Chrome, Edge),
 plain steps for iPhone Safari, and a warning that an installed iPhone app keeps its own storage and can open empty (use the backup to move your numbers).
 There is **no service worker and no offline mode**, so the app still needs a connection to open.
+**Every page declares the icon, not only the app.** Adding a page to the iPhone home screen uses whatever page is open: if that is the sign-in page (or the admins-only or admin page) and it declares no
+icon, iOS shows a plain letter tile (an "F"). So the gate's own pages (`signInPage` and `adminsOnly` in `netlify/edge-functions/gate.ts`) and `admin/index.html` carry the same icon, manifest and theme-color tags, with absolute paths
+(the sign-in page is served at whatever address was asked for), and their policies include `manifest-src 'self'`. A shortcut already saved with the wrong icon has to be deleted and added again; iOS keeps the old tile.
 Because a browser fetches the manifest and icons without cookies, those five exact paths are on the sign-in gate's open list (`OPEN` in `netlify/edge-functions/gate.ts`);
 they are public images and one small JSON file. The page's policy adds `manifest-src 'self'` (in the page and in `_headers`).
 After a deploy, check `curl -s <site>/manifest.webmanifest` returns the JSON without signing in.

@@ -45,3 +45,11 @@ test('pwa: the files the manifest names are in the stage list, so a deploy canno
   const readme = read('README.md');
   for (const f of ['manifest.webmanifest', 'icons/', 'js/install.js']) assert.ok(readme.includes(f), f + ' is in README');
 });
+
+test('pwa: the admin page also declares the icon, manifest and theme colour (absolute paths, all open) and its policy allows the manifest', () => {
+  const admin = read('admin/index.html'), open = openPaths();
+  assert.match(admin, /<link rel="apple-touch-icon" href="\/icons\/apple-touch-icon\.png">/); assert.match(admin, /<link rel="manifest" href="\/manifest\.webmanifest">/); assert.match(admin, /<meta name="theme-color"/);
+  for (const m of admin.matchAll(/<link rel="(?:icon|apple-touch-icon|manifest)"[^>]*href="([^"]+)"/g)) assert.ok(m[1].startsWith('/') && open.includes(m[1]), m[1]);
+  assert.match(admin.match(/Content-Security-Policy"\s+content="([^"]+)"/)[1], /manifest-src 'self'(;|$)/);
+  assert.match(gate, /manifest-src 'self'/, 'the gate\'s own pages (sign-in, admins only) allow the manifest too');
+});

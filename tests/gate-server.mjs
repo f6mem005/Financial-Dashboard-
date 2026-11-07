@@ -19,7 +19,7 @@ const fns = {
   '/auth/session': (await import('../netlify/functions/session.mjs')).default,
   '/auth/admin': (await import('../netlify/functions/admin.mjs')).default
 };
-const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.svg': 'image/svg+xml' };
+const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png', '.webmanifest': 'application/manifest+json' };
 const siteHeaders = {};
 for (const line of fs.readFileSync(path.join(root, '_headers'), 'utf8').split('\n')) { const m = line.match(/^\s+([A-Za-z-]+):\s*(.+)$/); if (m) siteHeaders[m[1].toLowerCase()] = m[2].trim(); }
 
