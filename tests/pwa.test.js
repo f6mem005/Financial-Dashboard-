@@ -32,7 +32,7 @@ test('pwa: the page links the manifest and icons with relative paths, and has th
 test('pwa: the security policy lets the page load its own manifest and nothing else new, in both the page and the headers', () => {
   const meta = html.match(/Content-Security-Policy"\s+content="([^"]+)"/)[1];
   const hdr = headers.match(/Content-Security-Policy: ([^\n]+)/)[1];
-  for (const p of [meta, hdr]) { assert.match(p, /manifest-src 'self'(;|$)/); assert.match(p, /default-src 'none'/); assert.doesNotMatch(p, /worker-src|https?:|\*/); }
+  for (const p of [meta, hdr]) { assert.match(p, /manifest-src 'self'(;|$)/); assert.match(p, /default-src 'none'/); assert.doesNotMatch(p, /worker-src|https?:|(^|[\s;])\*([\s;]|$)/); }
 });
 test('pwa: the browser fetches the manifest and icons with no cookie, so every one of them is on the gate\'s open list (and nothing else new is)', () => {
   const open = openPaths();

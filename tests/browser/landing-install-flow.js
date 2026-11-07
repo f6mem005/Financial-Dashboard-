@@ -59,12 +59,38 @@ const done = { v: 1, mode: 'real', onboarded: true, answers: { payFreq: 'biweekl
   await p.waitForTimeout(250);
   out('install: when the browser offers it, the card shows an Install button instead of the steps', (await p.locator('button:has-text("Install Finance Sense")').count()) === 1 && (await p.locator('.install-steps').count()) === 0);
   await p.click('button:has-text("Install Finance Sense")'); await p.waitForTimeout(250);
-  out('install: pressing it opens the browser prompt once and then the card goes back to the steps', (await p.evaluate(() => window.__prompted)) === 1 && (await p.locator('button:has-text("Install Finance Sense")').count()) === 0);
+  out('install: pressing it opens the browser prompt once, and once accepted the card says it is installed (not "install it" again)', (await p.evaluate(() => window.__prompted)) === 1 && (await p.locator('button:has-text("Install Finance Sense")').count()) === 0 && /Installed\./.test(await p.innerText('.install-slot')) && (await p.locator('.install-steps').count()) === 0);
   await p.fill('input[aria-label="Current balance"]', '321');
   await p.evaluate(() => { const e = new Event('beforeinstallprompt', { cancelable: true }); e.prompt = () => Promise.resolve(); e.userChoice = Promise.resolve({}); window.dispatchEvent(e); });
   await p.waitForTimeout(250);
   out('install: an offer that arrives while you are typing does not wipe what you typed', (await p.inputValue('input[aria-label="Current balance"]')) === '321');
+  // a backup being restored (file chosen, preview showing) must survive the browser's offer arriving, even when nothing is focused
+  const backup = JSON.stringify({ format: 'finance-sense-backup', version: 1, exportedAt: new Date().toISOString(), state: done });
+  await p.setInputFiles('input[type=file]', { name: 'b.json', mimeType: 'application/json', buffer: Buffer.from(backup) }); await p.waitForTimeout(500);
+  const previewBefore = await p.locator('.summary-line').count();
+  await p.evaluate(() => { document.activeElement && document.activeElement.blur(); const e = new Event('beforeinstallprompt', { cancelable: true }); e.prompt = () => Promise.resolve(); e.userChoice = new Promise(() => {}); window.dispatchEvent(e); });
+  await p.waitForTimeout(300);
+  out('install: an offer arriving does not wipe a backup that is open for restoring, or the typed balance', previewBefore === 1 && (await p.locator('.summary-line').count()) === 1 && (await p.inputValue('input[aria-label="Current balance"]')) === '321' && (await p.locator('button:has-text("Install Finance Sense")').count()) === 1);
+  await p.evaluate(() => window.dispatchEvent(new Event('appinstalled'))); await p.waitForTimeout(200);
+  out('install: once the browser says it was installed, the card says so and the restore preview is still there', /Installed\./.test(await p.innerText('.install-slot')) && (await p.locator('.summary-line').count()) === 1);
   out('install: no console errors', p.errs.length === 0); if (p.errs.length) console.log(p.errs);
+  await p.ctx.close();
+  // a prompt() that fails must not leave an uncaught error in the console
+  p = await open({}, seed); await p.click('.tab:has-text("Settings")');
+  await p.evaluate(() => { const e = new Event('beforeinstallprompt', { cancelable: true }); e.prompt = () => Promise.reject(new Error('declined')); Object.defineProperty(e, 'userChoice', { get() { return Promise.reject(new Error('declined')); } }); window.dispatchEvent(e); });
+  await p.waitForTimeout(200); await p.click('button:has-text("Install Finance Sense")'); await p.waitForTimeout(300);
+  out('install: a prompt the browser refuses leaves a clean console and the card still shows the steps', p.errs.length === 0 && (await p.locator('.install-steps').count()) === 1); if (p.errs.length) console.log(p.errs);
+  await p.ctx.close();
+  // the in-app "How it works" screen has no phone, so it must keep the normal single-column hero
+  p = await open({ viewport: { width: 1200, height: 800 } }, seed); await p.click('button:has-text("How it works")'); await p.waitForTimeout(250);
+  out('how it works (in the app): wide screens keep the normal hero, no empty second column', (await p.locator('.phone').count()) === 0 && (await p.evaluate(() => getComputedStyle(document.querySelector('.landing-in')).display)) !== 'grid');
+  await p.ctx.close();
+  p = await open({ viewport: { width: 1200, height: 800 } });
+  const hx = await p.evaluate(() => [document.querySelector('.landing-title').getBoundingClientRect().left, document.querySelector('.welcome .section-title').getBoundingClientRect().left]);
+  out('landing: on a wide screen the hero text and the sections below start at the same left edge', Math.abs(hx[0] - hx[1]) <= 2);
+  await p.ctx.close();
+  p = await open({ viewport: { width: 360, height: 700 } });
+  out('landing: at 360px the three key facts stack or fit without a stray divider', await p.evaluate(() => { const l = [...document.querySelectorAll('.landing-stats li')]; const tops = new Set(l.map((x) => Math.round(x.getBoundingClientRect().top))); return tops.size === 1 || l.every((x) => getComputedStyle(x).borderLeftWidth === '0px'); }));
   await p.ctx.close();
   p = await open({}, seed + `Object.defineProperty(navigator, 'standalone', { value: true });`); await p.click('.tab:has-text("Settings")');
   out('install: already installed, the card just says so', /using the installed app/.test(await p.innerText('main')) && (await p.locator('.install-steps').count()) === 0);

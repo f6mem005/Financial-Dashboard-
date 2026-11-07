@@ -37,7 +37,7 @@ const out = (k, v) => { if (!v) failed++; console.log((v ? 'PASS ' : 'FAIL ') + 
   out('the keyboard focus ring on the banner links is white (visible on the blue)', await p.evaluate(() => { const e = document.activeElement; return !!e && e.classList.contains('landing-link') && getComputedStyle(e).outlineColor === 'rgb(255, 255, 255)'; }));
   out('a focused control is never left under the pinned bar (scroll padding)', await p.evaluate(() => parseFloat(getComputedStyle(document.documentElement).scrollPaddingBottom) >= 100));
   out('exactly ONE start button on the page, pinned so it is always in reach', (await p.locator('button:has-text("Get started"), button:has-text("Continue setup")').count()) === 1 && (await p.locator('.cta-bar button').count()) === 1);
-  out('feature cards and steps are shown', (await p.locator('ul.benefits li').count()) === 4 && (await p.locator('ol.how li').count()) === 5);
+  out('benefit list and steps are shown', (await p.locator('ul.benefits li').count()) === 4 && (await p.locator('ol.how li').count()) === 5);
   for (const w of [320, 390, 1000]) { await p.setViewportSize({ width: w, height: 700 }); out('no sideways scrolling on the landing page at ' + w + 'px', await p.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)); }
   await p.setViewportSize({ width: 390, height: 900 });
   await p.click('button:has-text("Get started")');

@@ -163,8 +163,8 @@
      and the caption says the numbers are an example. It must never look or behave like something you can tap. */
   function phonePreview() {
     function row(name, when, amt) { return h('div', { class: 'ph-row' }, h('span', { class: 'ph-name' }, name), h('span', { class: 'ph-when' }, when), h('span', { class: 'ph-amt' }, amt)); }
-    var spark = h('svg', { viewBox: '0 0 120 36', class: 'ph-spark', width: 120, height: 36 },
-      h('polyline', { points: '0,26 14,24 28,27 42,20 56,22 70,14 84,17 98,9 120,6', class: 'ph-line', fill: 'none', 'stroke-width': 2.4, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }));
+    var spark = h('svg', { viewBox: '0 0 200 36', class: 'ph-spark', width: 200, height: 36 },
+      h('polyline', { points: '0,26 23,24 47,27 70,20 93,22 117,14 140,17 163,9 200,6', class: 'ph-line', fill: 'none', 'stroke-width': 2.4, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }));
     var track = h('svg', { viewBox: '0 0 200 6', class: 'ph-track', width: 200, height: 6 },
       h('rect', { x: 0, y: 0, width: 200, height: 6, class: 'ph-track-bg' }), h('rect', { x: 0, y: 0, width: 124, height: 6, class: 'ph-track-fill' }));
     return h('div', { class: 'landing-phone-wrap' },
@@ -226,7 +226,7 @@
       !inApp && !resuming ? h('details', { class: 'restore' }, h('summary', null, 'Already use Finance Sense on another device? Restore from a backup'), FD.transfer.restoreCard(app)) : null,
       !inApp && resuming ? h('details', { class: 'restore' }, h('summary', null, 'Restore from a backup instead'), FD.transfer.restoreCard(app)) : null,
       disclaimer());
-    return h('div', { class: 'landing' }, unreadable ? h('div', { class: 'landing-alert' }, unreadable) : null, hero, main, h('div', { class: 'cta-bar' }, primary));
+    return h('div', { class: 'landing' + (inApp ? '' : ' with-phone') }, unreadable ? h('div', { class: 'landing-alert' }, unreadable) : null, hero, main, h('div', { class: 'cta-bar' }, primary));
   }
 
   function icon(d) {
@@ -258,11 +258,8 @@
 
   if (app.S.mode === 'real' && FD.store.wasMigrated()) FD.store.save(app.S); // keep the one-time migration from drifting day to day
 
-  // The browser may offer to install the app at any moment; if the Settings card is showing (and nothing is being typed), redraw it.
-  FD.install.init(function () {
-    var a = doc.activeElement;
-    if (app.S.mode !== 'fresh' && (app.S.onboarded || app.S.mode === 'demo') && app.ui.tab === 'settings' && !app.ui.how && app.ui.editing === null && !(a && /^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName))) app.render();
-  });
+  // The browser may offer to install the app at any moment; the Settings card redraws only itself (see js/install.js).
+  FD.install.init();
 
   FD.app = app;
   function boot() { app.render(); }

@@ -295,7 +295,7 @@ html { scroll-padding-bottom: 7rem; }   /* a focused control is never left under
 .landing-stats strong { font-size: .98rem; color: #ffffff; }
 .landing-stats span { font-size: .8rem; color: rgba(255, 255, 255, .85); }
 .landing-phone-wrap { display: flex; flex-direction: column; align-items: center; gap: 10px; margin-top: 8px; }
-.phone { width: 232px; border-radius: 34px; border: 7px solid #0a1d40; background: var(--surface); box-shadow: 0 18px 40px rgba(5, 15, 40, .45); overflow: hidden;
+.phone { width: 232px; border-radius: 34px; border: 7px solid #0a1d40; background: var(--surface); box-shadow: 0 0 0 1px rgba(255, 255, 255, .28), 0 18px 40px rgba(5, 15, 40, .45); overflow: hidden;
   pointer-events: none; user-select: none; -webkit-user-select: none; cursor: default; }
 .ph-notch { width: 70px; height: 16px; margin: 0 auto; background: #0a1d40; border-radius: 0 0 12px 12px; }
 .ph-body { display: flex; flex-direction: column; gap: 4px; padding: 10px 14px 16px; color: var(--text); text-align: left; }
@@ -308,12 +308,15 @@ html { scroll-padding-bottom: 7rem; }   /* a focused control is never left under
 .ph-track-bg { fill: var(--accent-soft); } .ph-track-fill { fill: var(--accent); }
 .ph-row { display: flex; gap: 8px; font-size: .78rem; padding: 3px 0; border-bottom: 1px solid var(--line); }
 .ph-name { flex: 1; font-weight: 600; } .ph-when { color: var(--text-2); } .ph-amt { font-variant-numeric: tabular-nums; font-weight: 700; }
-.ph-spark { width: 100%; height: 36px; } .ph-line { stroke: var(--accent); }
+.ph-spark { width: 100%; height: auto; display: block; } .ph-line { stroke: var(--accent); }
 .landing-caption { font-size: .8rem; color: rgba(255, 255, 255, .88); text-align: center; max-width: 260px; }
 @media (min-width: 820px) {
-  .landing-in { max-width: 940px; display: grid; grid-template-columns: minmax(0, 1fr) 260px; column-gap: 48px; align-items: start; }
-  .landing-in > * { grid-column: 1; }
-  .landing-in > .landing-phone-wrap { grid-column: 2; grid-row: 1 / span 8; margin-top: 0; }
+  .with-phone .landing-in { max-width: 940px; display: grid; grid-template-columns: minmax(0, 1fr) 260px; column-gap: 48px; align-items: start; }
+  .with-phone .landing-in > * { grid-column: 1; }
+  .with-phone .landing-in > .landing-phone-wrap { grid-column: 2; grid-row: 1 / span 8; margin-top: 0; }
+  /* the text below lines up with the hero's left edge but keeps a readable line length */
+  .with-phone .welcome { max-width: 940px; }
+  .with-phone .welcome > * { max-width: 720px; }
 }
 .install-steps { display: flex; flex-direction: column; gap: 8px; padding-left: 18px; list-style: disc; font-size: .92rem; color: var(--text-2); }
-@media (max-width: 359px) { .landing-stats { flex-direction: column; gap: 8px; } .landing-stats li { padding: 0; border-left: 0; } }
+@media (max-width: 379px) { .landing-stats { flex-direction: column; gap: 8px; } .landing-stats li { padding: 0; border-left: 0; } }
