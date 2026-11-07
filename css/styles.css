@@ -19,8 +19,8 @@
   }
 }
 * { box-sizing: border-box; }
-html { -webkit-text-size-adjust: 100%; }
-body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+html { -webkit-text-size-adjust: 100%; overflow-x: hidden; overscroll-behavior-x: none; }   /* a phone page must never drag sideways, even if some box is too wide */
+body { margin: 0; overflow-x: clip; background: var(--bg); color: var(--text); font: 16px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
 h1, h2, h3, p, ul, ol { margin: 0; }
 ul, ol { padding: 0; list-style: none; }
 button, input, select { font: inherit; color: inherit; }
@@ -65,7 +65,7 @@ html { scroll-padding-top: 7rem; }   /* a focused control is never left under th
 .tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .tiles.two { grid-template-columns: repeat(2, 1fr); }
 .tile { background: var(--surface-2); border-radius: 10px; padding: 10px; min-width: 0; }
-.tile-label { font-size: .8rem; color: var(--text-2); }
+.tile-label { font-size: .8rem; color: var(--text-2); overflow-wrap: break-word; }
 .tile-value { font-size: 1.3rem; font-weight: 700; overflow-wrap: anywhere; }
 .tile.bad .tile-value { color: var(--bad); } .tile.good .tile-value { color: var(--good); }
 
@@ -87,8 +87,8 @@ html { scroll-padding-top: 7rem; }   /* a focused control is never left under th
 .btn.small { padding: 6px 12px; min-height: 36px; font-size: .9rem; }
 .btn.big { width: 100%; padding: 16px; font-size: 1.1rem; }
 .input { width: 100%; border: 1px solid var(--line); background: var(--surface); border-radius: 10px; padding: 10px 12px; min-height: 44px; }
-.money-input { display: flex; align-items: center; gap: 4px; border: 1px solid var(--line); background: var(--surface); border-radius: 10px; padding-left: 12px; }
-.money-input .input { border: 0; background: transparent; padding-left: 4px; }
+.money-input { min-width: 0; display: flex; align-items: center; gap: 4px; border: 1px solid var(--line); background: var(--surface); border-radius: 10px; padding-left: 12px; }
+.money-input .input { border: 0; background: transparent; padding-left: 4px; flex: 1 1 auto; min-width: 0; width: auto; }   /* min-width: 0 lets the box shrink on a small phone instead of pushing the page wider */
 .money-input .suffix, .money-input .prefix { color: var(--text-2); }
 .money-input .suffix { padding-right: 12px; }
 .field { display: flex; flex-direction: column; gap: 4px; }
@@ -97,9 +97,11 @@ html { scroll-padding-top: 7rem; }   /* a focused control is never left under th
 .stack { display: flex; flex-direction: column; gap: 12px; }
 .inline { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .inline .money-input, .inline .input { flex: 1 1 120px; width: auto; }
+.inline > * { min-width: 0; max-width: 100%; }   /* a dropdown or box in a wrapping row may shrink but never pushes the page wider */
+.inline select { flex: 1 1 120px; }
 .check { display: flex; gap: 8px; align-items: center; font-size: .95rem; }
 .check input { width: 20px; height: 20px; }
-.range { width: 100%; accent-color: var(--accent); min-height: 32px; }
+.range { width: 100%; margin: 0; accent-color: var(--accent); min-height: 32px; }
 .icon-btn { border: 0; background: transparent; width: 36px; height: 36px; border-radius: 8px; cursor: pointer; color: var(--text-2); flex: none; }
 .chips, .seg { display: flex; flex-wrap: wrap; gap: 8px; }
 .chip { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 9px 14px; min-height: 40px; cursor: pointer; }
@@ -142,7 +144,7 @@ html { scroll-padding-top: 7rem; }   /* a focused control is never left under th
 .txn-main { display: flex; flex-direction: column; }
 .txn-amt { font-variant-numeric: tabular-nums; font-weight: 600; }
 .cal-date { width: 56px; color: var(--text-2); font-size: .9rem; flex: none; }
-.cal-label { flex: 1; }
+.cal-label { flex: 1; min-width: 3rem; overflow-wrap: anywhere; }   /* a floor, so it wraps by word instead of squeezing to nothing */
 .cal-amt { font-variant-numeric: tabular-nums; width: 80px; text-align: right; }
 .cal-bal { font-variant-numeric: tabular-nums; width: 80px; text-align: right; font-weight: 650; }
 .cal-row.pay { background: var(--good-soft); border-radius: 8px; padding-left: 8px; padding-right: 8px; }
@@ -201,6 +203,8 @@ table { width: 100%; border-collapse: collapse; font-size: .92rem; }
 th { text-align: left; color: var(--text-2); font-weight: 600; font-size: .8rem; }
 th, td { padding: 8px 6px; border-top: 1px solid var(--line); vertical-align: top; }
 thead th { border-top: 0; }
+.table-scroll { max-width: 100%; overflow-x: auto; }   /* a table that is still too wide scrolls inside its own box, never the page */
+@media (max-width: 380px) { table.compare { font-size: .8rem; } table.compare th, table.compare td { padding: 6px 3px; } table.compare td:first-child { overflow-wrap: anywhere; } }
 details summary { cursor: pointer; color: var(--accent); padding: 6px 0; }
 
 /* tabs & footer */
@@ -321,3 +325,12 @@ html { scroll-padding-bottom: 7rem; }   /* a focused control is never left under
 .install-slot:focus { outline: none; }
 .install-steps { display: flex; flex-direction: column; gap: 8px; padding-left: 18px; list-style: disc; font-size: .92rem; color: var(--text-2); }
 @media (max-width: 379px) { .landing-stats { flex-direction: column; gap: 8px; } .landing-stats li { padding: 0; border-left: 0; } }
+
+/* installed app: no rubber-band bounce, so the page never looks like it is floating; in a browser tab pull-to-refresh stays */
+@media (display-mode: standalone), (display-mode: fullscreen), (display-mode: minimal-ui) { html, body { overscroll-behavior: none; } }
+
+/* small phones: three tiles across are too tight for their labels, and the calendar columns need less room */
+@media (max-width: 379px) {
+  .tiles { grid-template-columns: repeat(auto-fit, minmax(104px, 1fr)); }
+  .cal-row { gap: 6px; } .cal-row.pay { padding-left: 6px; padding-right: 6px; } .cal-date { width: 44px; font-size: .8rem; } .cal-amt, .cal-bal { width: auto; min-width: 3.2rem; flex: none; white-space: nowrap; } .cal-bal { font-size: .88rem; } .cal-label { font-size: .92rem; }
+}

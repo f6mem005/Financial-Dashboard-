@@ -61,6 +61,11 @@ GitHub, so a push does not deploy. If that ever changes, a push could publish, s
   illustration may only use generic fund types (no tickers, providers or brands) and must stay labelled as an illustration.
 - Backup files are untrusted input: they only enter through `FD.backup.open`, which passes them through `store.sanitize`.
   Never read a file's contents any other way, and keep the PBKDF2 iteration bounds.
+- Phone fit: nothing may be wider than the screen, or the page can be dragged sideways and looks like it is floating. `tests/browser/mobile-fit-flow.js` checks every screen at 320, 360, 390 and 430px
+  (and that sticky bars still stick), so run it after any CSS or layout change. A flex or grid child that holds an input or a long word needs `min-width: 0`.
+- Pop-ups: today the only pop-ups are the browser's own confirm boxes, which already block the page behind them. If a custom pop-up, sheet or menu is ever added, it must lock the page behind it
+  (`overflow: hidden` on `html` while open, `overscroll-behavior: contain` on the pop-up's own scroller), keep keyboard focus inside, close on Escape, restore focus when it closes,
+  and have a browser test (touch-emulated) proving that scrolling moves the pop-up and not the page behind it.
 - Never put secrets, tokens or API keys in the repo.
 
 ## Deploying: stamp the build
