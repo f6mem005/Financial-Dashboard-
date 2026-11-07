@@ -123,12 +123,17 @@
       var proj = I.project({ monthly: st.monthly, start: st.start, years: st.years, rates: rates });
       var put = (st.start || 0) + (st.monthly || 0) * st.years * 12;
       result.appendChild(h('p', { class: 'summary-line' }, 'Putting in ' + money(st.monthly || 0) + ' a month for ' + st.years + ' years means ' + money(put) + ' from you' + (st.start ? ' (including ' + money(st.start) + ' to start)' : '') + '. Here is what it could become, in today’s money:'));
-      result.appendChild(h('div', { class: 'table-scroll', role: 'group', 'aria-label': 'Growth illustration by fund type', tabindex: '0' }, h('table', { class: 'compare' },
+      var tableBox = h('div', { class: 'table-scroll', role: 'group', 'aria-label': 'Growth illustration by fund type' }, h('table', { class: 'compare' },
         h('thead', null, h('tr', null, h('th', null, 'If it were in'), h('th', null, 'Cautious'), h('th', null, 'Middle'), h('th', null, 'Hopeful'))),
         h('tbody', null, proj.map(function (r) {
           function end(s) { return money(s[s.length - 1].value); }
           return h('tr', null, h('td', null, r.name), h('td', null, end(r.low)), h('td', null, h('strong', null, end(r.mid))), h('td', null, end(r.high)));
-        })))));
+        }))));
+      result.appendChild(tableBox);
+      (function keyboardScroll() {   // a scrolling box must be reachable by keyboard, but only when something really scrolls
+        function fit() { if (tableBox.scrollWidth > tableBox.clientWidth + 1) tableBox.setAttribute('tabindex', '0'); else tableBox.removeAttribute('tabindex'); }
+        fit(); if (root.ResizeObserver) { try { new root.ResizeObserver(fit).observe(tableBox); } catch (e) { /* fit() above is enough */ } }
+      })();
       result.appendChild(h('div', { class: 'seg', role: 'group', 'aria-label': 'Choose what to chart' }, proj.map(function (r) {
         var label = r.name.replace(/ \(.*\)$/, '');
         return UI.chip(label, st.pick === r.id, function () {

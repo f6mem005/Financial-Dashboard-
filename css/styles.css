@@ -19,7 +19,7 @@
   }
 }
 * { box-sizing: border-box; }
-html { -webkit-text-size-adjust: 100%; overflow-x: hidden; overscroll-behavior-x: none; }   /* a phone page must never drag sideways, even if some box is too wide */
+html { -webkit-text-size-adjust: 100%; overflow-x: hidden; }   /* a phone page must never drag sideways, even if some box is too wide */
 body { margin: 0; overflow-x: clip; background: var(--bg); color: var(--text); font: 16px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
 h1, h2, h3, p, ul, ol { margin: 0; }
 ul, ol { padding: 0; list-style: none; }
@@ -98,7 +98,6 @@ html { scroll-padding-top: 7rem; }   /* a focused control is never left under th
 .inline { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .inline .money-input, .inline .input { flex: 1 1 120px; width: auto; }
 .inline > * { min-width: 0; max-width: 100%; }   /* a dropdown or box in a wrapping row may shrink but never pushes the page wider */
-.inline select { flex: 1 1 120px; }
 .check { display: flex; gap: 8px; align-items: center; font-size: .95rem; }
 .check input { width: 20px; height: 20px; }
 .range { width: 100%; margin: 0; accent-color: var(--accent); min-height: 32px; }
@@ -144,9 +143,10 @@ html { scroll-padding-top: 7rem; }   /* a focused control is never left under th
 .txn-main { display: flex; flex-direction: column; }
 .txn-amt { font-variant-numeric: tabular-nums; font-weight: 600; }
 .cal-date { width: 56px; color: var(--text-2); font-size: .9rem; flex: none; }
-.cal-label { flex: 1; min-width: 3rem; overflow-wrap: anywhere; }   /* a floor, so it wraps by word instead of squeezing to nothing */
-.cal-amt { font-variant-numeric: tabular-nums; width: 80px; text-align: right; }
-.cal-bal { font-variant-numeric: tabular-nums; width: 80px; text-align: right; font-weight: 650; }
+.cal-row { flex-wrap: wrap; row-gap: 2px; }   /* a row with big amounts wraps instead of running off the screen */
+.cal-label { flex: 1 1 4rem; min-width: 0; overflow-wrap: anywhere; }   /* a floor, so it wraps by word instead of squeezing to nothing */
+.cal-amt { font-variant-numeric: tabular-nums; width: auto; min-width: 5rem; flex: none; white-space: nowrap; text-align: right; }
+.cal-bal { font-variant-numeric: tabular-nums; width: auto; min-width: 5rem; flex: none; white-space: nowrap; margin-left: auto; text-align: right; font-weight: 650; }
 .cal-row.pay { background: var(--good-soft); border-radius: 8px; padding-left: 8px; padding-right: 8px; }
 .ans-q { font-weight: 600; font-size: .95rem; }
 .leaks li { padding: 8px 0; border-top: 1px solid var(--line); counter-increment: leak; }
@@ -189,7 +189,7 @@ html { scroll-padding-top: 7rem; }   /* a focused control is never left under th
 .linechart .minline { stroke: var(--bad); stroke-width: 1.5; stroke-dasharray: 5 4; }
 .linechart .cross { stroke: var(--text-3); stroke-width: 1; }
 .linechart .dot { fill: var(--surface); stroke: var(--text); stroke-width: 2; }
-.tip { position: absolute; top: 4px; transform: translateX(-50%); background: var(--text); color: var(--bg); padding: 4px 8px; border-radius: 8px; font-size: .8rem; pointer-events: none; white-space: nowrap; }
+.tip { position: absolute; top: 4px; transform: translateX(-50%); background: var(--text); color: var(--bg); padding: 4px 8px; border-radius: 8px; font-size: .8rem; pointer-events: none; white-space: normal; width: max-content; max-width: calc(100% - 8px); text-align: center; }
 .chart-key { font-size: .85rem; color: var(--text-2); display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
 .key-line { display: inline-block; width: 22px; height: 0; border-top: 3px solid; vertical-align: middle; }
 .key-line.ok { border-color: var(--accent); } .key-line.bad { border-color: var(--bad); }
@@ -331,6 +331,7 @@ html { scroll-padding-bottom: 7rem; }   /* a focused control is never left under
 
 /* small phones: three tiles across are too tight for their labels, and the calendar columns need less room */
 @media (max-width: 379px) {
-  .tiles { grid-template-columns: repeat(auto-fit, minmax(104px, 1fr)); }
-  .cal-row { gap: 6px; } .cal-row.pay { padding-left: 6px; padding-right: 6px; } .cal-date { width: 44px; font-size: .8rem; } .cal-amt, .cal-bal { width: auto; min-width: 3.2rem; flex: none; white-space: nowrap; } .cal-bal { font-size: .88rem; } .cal-label { font-size: .92rem; }
+  .tile { padding: 8px; } .tile-label { font-size: .74rem; } .tile-value { font-size: 1.15rem; }
+  .cal-row { gap: 2px 6px; } .cal-row.pay { padding-left: 6px; padding-right: 6px; } .cal-date { width: 44px; font-size: .8rem; } .cal-amt, .cal-bal { min-width: 3.2rem; } .cal-bal { font-size: .88rem; } .cal-label { font-size: .92rem; }
 }
+@media (max-width: 349px) { .tiles { grid-template-columns: repeat(auto-fit, minmax(104px, 1fr)); } }
