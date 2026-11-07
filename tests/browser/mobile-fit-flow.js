@@ -4,7 +4,7 @@
 const { chromium } = require('playwright');
 const URL = process.env.BASE_URL || 'http://localhost:8912/index.html';
 let failed = 0; const out = (k, v) => { if (!v) failed++; console.log((v ? 'PASS ' : 'FAIL ') + k); };
-const done = { v: 1, mode: 'real', onboarded: true, answers: { payFreq: 'biweekly', pay: { amount: 1500, none: false, nextPayday: null }, otherIncome: [{ id: 'side', monthly: 200 }],
+const done = { v: 1, mode: 'real', onboarded: true, answers: { pain: ['runout'], payFreq: 'biweekly', pay: { amount: 1500, none: false, nextPayday: null }, otherIncome: [{ id: 'side', monthly: 200 }],
   bills: [{ id: 'rent', amount: 900, due: 1 }, { id: 'phone', amount: 45, due: 10 }], variable: [{ id: 'groceries', monthly: 300 }], annual: [], debts: [{ id: 'd-card', type: 'card', balance: 1000, min: 35, apr: 22, aprKnown: true }] },
   settings: { balanceSet: true, openingBalance: 400 }, transactions: [], billsPaid: {}, subs: [] };
 const big = JSON.parse(JSON.stringify(done)); Object.assign(big.answers, { pay: { amount: 99999.99, none: false, nextPayday: null }, otherIncome: [{ id: 'side', monthly: 54321 }],
@@ -32,6 +32,11 @@ const probe = () => {
     let ctx = await b.newContext(phone), p = await ctx.newPage(); await p.goto(URL); await check(p, 'landing');
     await p.click('button:has-text("Look at a demo first")'); await p.waitForTimeout(250);
     for (const t of TABS) { await p.evaluate((t) => window.FD.app.go(t), t); await p.waitForTimeout(220); await check(p, 'demo ' + t); }
+    if (w >= 360) {   // typical amounts: every calendar row (the pay row too) fits on one line on any normal phone
+      await p.evaluate(() => window.FD.app.go('home')); await p.waitForTimeout(200);
+      const hs = await p.evaluate(() => [...document.querySelectorAll('li.cal-row')].map((l) => Math.round(l.getBoundingClientRect().height)));
+      if (hs.length < 3 || hs.some((x) => x > 52)) bads.push('calendar rows are not one line each at typical amounts: ' + JSON.stringify(hs));
+    }
     await p.click('button:has-text("How it works")'); await p.waitForTimeout(200); await check(p, 'how it works'); await ctx.close();
     // a real, finished setup: every tab and every "change my answer" screen
     ctx = await b.newContext(phone); p = await ctx.newPage(); await p.addInitScript(`localStorage.setItem('fd.v1', ${JSON.stringify(JSON.stringify(done))})`); await p.goto(URL);
@@ -47,8 +52,10 @@ const probe = () => {
     for (const t of TABS) { await p.evaluate((t) => window.FD.app.go(t), t); await p.waitForTimeout(220); await check(p, 'big numbers ' + t); }
     // the cash calendar with long amounts in a real row, and the chart tip (hidden until used) fully on screen
     await p.evaluate(() => window.FD.app.go('home')); await p.waitForTimeout(200);
-    await p.evaluate(() => { const li = document.querySelector('li.cal-row'); if (!li) return; li.querySelector('.cal-amt').textContent = '-$12,345.67'; li.querySelector('.cal-bal').textContent = '-$12,345.67'; li.querySelector('.cal-label').textContent = 'Subscriptions and memberships'; });
-    await check(p, 'calendar row with -$12,345.67');
+    const rows = await p.evaluate(() => document.querySelectorAll('li.cal-row').length);
+    if (rows < 3) bads.push('the cash calendar did not render (' + rows + ' rows), so the big-amount check would prove nothing');
+    await p.evaluate(() => document.querySelectorAll('li.cal-row').forEach((li, i) => { const a = li.querySelector('.cal-amt'), bl = li.querySelector('.cal-bal'), l = li.querySelector('.cal-label'); if (a && a.textContent) a.textContent = i % 2 ? '-$12,345.67' : '+$99,999.99'; bl.textContent = '-$12,345.67'; l.textContent = 'Subscriptions and memberships'; }));
+    await check(p, 'every calendar row (including the pay row) with -$12,345.67');
     await ctx.close(); ctx = await b.newContext(phone); p = await ctx.newPage(); await p.goto(URL); await p.click('button:has-text("Look at a demo first")'); await p.evaluate(() => window.FD.app.go('ideas')); await p.waitForTimeout(300);
     await p.locator('.chart-wrap').first().focus();
     for (const [key, times] of [['ArrowRight', 1], ['Shift+ArrowRight', 40], ['Shift+ArrowLeft', 80]]) {   // first point, far right end, far left end

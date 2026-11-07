@@ -66,7 +66,7 @@ html { scroll-padding-top: 7rem; }   /* a focused control is never left under th
 .tiles.two { grid-template-columns: repeat(2, 1fr); }
 .tile { background: var(--surface-2); border-radius: 10px; padding: 10px; min-width: 0; }
 .tile-label { font-size: .8rem; color: var(--text-2); overflow-wrap: break-word; }
-.tile-value { font-size: 1.3rem; font-weight: 700; overflow-wrap: anywhere; }
+.tile-value { font-size: clamp(1.05rem, 5.2vw, 1.3rem); font-weight: 700; overflow-wrap: anywhere; }
 .tile.bad .tile-value { color: var(--bad); } .tile.good .tile-value { color: var(--good); }
 
 /* alerts */
@@ -142,11 +142,12 @@ html { scroll-padding-top: 7rem; }   /* a focused control is never left under th
 .txn-date { width: 52px; font-size: .85rem; color: var(--text-2); flex: none; }
 .txn-main { display: flex; flex-direction: column; }
 .txn-amt { font-variant-numeric: tabular-nums; font-weight: 600; }
-.cal-date { width: 56px; color: var(--text-2); font-size: .9rem; flex: none; }
-.cal-row { flex-wrap: wrap; row-gap: 2px; }   /* a row with big amounts wraps instead of running off the screen */
-.cal-label { flex: 1 1 4rem; min-width: 0; overflow-wrap: anywhere; }   /* a floor, so it wraps by word instead of squeezing to nothing */
-.cal-amt { font-variant-numeric: tabular-nums; width: auto; min-width: 5rem; flex: none; white-space: nowrap; text-align: right; }
-.cal-bal { font-variant-numeric: tabular-nums; width: auto; min-width: 5rem; flex: none; white-space: nowrap; margin-left: auto; text-align: right; font-weight: 650; }
+.cal-date { width: 3.4rem; color: var(--text-2); font-size: .9rem; flex: none; }
+.cal-row { flex-wrap: wrap; gap: 2px 6px; }   /* a row with big amounts wraps instead of running off the screen */
+.cal-label { flex: 1 1 3rem; min-width: 0; overflow-wrap: anywhere; }   /* a floor, so it wraps by word instead of squeezing to nothing */
+.cal-amt { font-variant-numeric: tabular-nums; width: auto; min-width: 3.5rem; flex: none; white-space: nowrap; text-align: right; }
+.cal-amt:empty { display: none; }   /* the starting row has no amount: do not reserve room for one */
+.cal-bal { font-variant-numeric: tabular-nums; width: auto; min-width: 3.5rem; flex: none; white-space: nowrap; margin-left: auto; text-align: right; font-weight: 650; }
 .cal-row.pay { background: var(--good-soft); border-radius: 8px; padding-left: 8px; padding-right: 8px; }
 .ans-q { font-weight: 600; font-size: .95rem; }
 .leaks li { padding: 8px 0; border-top: 1px solid var(--line); counter-increment: leak; }
@@ -331,7 +332,9 @@ html { scroll-padding-bottom: 7rem; }   /* a focused control is never left under
 
 /* small phones: three tiles across are too tight for their labels, and the calendar columns need less room */
 @media (max-width: 379px) {
-  .tile { padding: 8px; } .tile-label { font-size: .74rem; } .tile-value { font-size: 1.15rem; }
+  .tile { padding: 8px; } .tile-label { font-size: .74rem; }
   .cal-row { gap: 2px 6px; } .cal-row.pay { padding-left: 6px; padding-right: 6px; } .cal-date { width: 44px; font-size: .8rem; } .cal-amt, .cal-bal { min-width: 3.2rem; } .cal-bal { font-size: .88rem; } .cal-label { font-size: .92rem; }
 }
 @media (max-width: 349px) { .tiles { grid-template-columns: repeat(auto-fit, minmax(104px, 1fr)); } }
+/* wide screens: fixed amount columns so figures line up row to row, wide enough for -$99,999.99 */
+@media (min-width: 560px) { .cal-row { column-gap: 10px; } .cal-date { width: 56px; } .cal-amt, .cal-bal { width: 7.5rem; min-width: 0; } }
