@@ -54,6 +54,8 @@ There is **no service worker and no offline mode**, so the app still needs a con
 Because a browser fetches the manifest and icons without cookies, those five exact paths are on the sign-in gate's open list (`OPEN` in `netlify/edge-functions/gate.ts`);
 they are public images and one small JSON file. The page's policy adds `manifest-src 'self'` (in the page and in `_headers`).
 After a deploy, check `curl -s <site>/manifest.webmanifest` returns the JSON without signing in, and that its content type is `application/manifest+json` (or JSON).
+Also check the look-alikes stay gated: `curl -s -o /dev/null -w '%{http_code}\n'` on `<site>/icons/`, `<site>/icons/icon-192.png/`, `<site>/ICONS/icon-192.png`, `<site>/manifest.webmanifest/` and
+`--path-as-is '<site>/icons/..%2findex.html'` must each print 401 or 404, never 200 (and never the app's `index.html`).
 
 ## Telling people to refresh after an update
 
