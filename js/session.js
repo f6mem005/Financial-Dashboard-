@@ -13,12 +13,12 @@
   function tick() { if (!ticking) { ticking = true; Promise.resolve().then(function () { epoch++; ticking = false; }); } }
   function alive(s) { return s.epoch === epoch || (root.document && root.document.contains(s.el)); }
 
-  var busy = false;   // one sign-out at a time: a second tap while the first is in flight is ignored
+  var busy = false, signedOut = false;   // one sign-out at a time: a second tap while the first is in flight is ignored
   function signOut() {
     if (busy) return; busy = true;
     try { if (FD.app && FD.app.flush) FD.app.flush(); } catch (e) { /* keep going */ }   // what is half-typed in setup is kept, as with Home and Refresh
     function fail() { busy = false; if (UI.toast) UI.toast('Could not sign out. Check your connection and try again.', 6000); }   // never pretend it worked
-    try { root.fetch('/auth/logout', { method: 'POST', credentials: 'same-origin' }).then(function (r) { if (r.ok) root.location.assign('/'); else fail(); }, fail); } catch (e) { fail(); }   // the gate answers '/' with the sign-in page
+    try { root.fetch('/auth/logout', { method: 'POST', credentials: 'same-origin' }).then(function (r) { if (r.ok) { signedOut = true; root.location.assign('/'); } else fail(); }, fail); } catch (e) { fail(); }   // the gate answers '/' with the sign-in page
   }
   function label() { return info && info.role === 'admin' ? 'the admin' : (info && info.name) || 'you'; }
   function button(kind) {
@@ -67,6 +67,9 @@
       }
     } catch (e) { /* ignore */ }
   }
+
+  // Back after signing out can bring this page back from the browser's page cache, still showing the app: clear the stuck state, and if the sign-out had worked, reload so the gate shows the sign-in page.
+  if (root.addEventListener) root.addEventListener('pageshow', function (e) { if (e && e.persisted) { busy = false; if (signedOut) root.location.reload(); } });
 
   FD.session = { load: load, slot: slot, refresh: refresh, signOut: signOut, who: function () { return info; } };
   if (typeof module !== 'undefined' && module.exports) module.exports = FD;

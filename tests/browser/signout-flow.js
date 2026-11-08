@@ -62,6 +62,13 @@ const SEED = `if (!sessionStorage.getItem('s')) { localStorage.setItem('fd.v1', 
   await Promise.all([p.waitForNavigation(), (async () => { await so.click(); await so.click({ force: true }).catch(() => {}); await so.click({ force: true }).catch(() => {}); })()]);
   out('tapping Sign out three times quickly sends only one request', slow === 1); await p.ctx.close();
 
+  // ---- coming back from the browser's page cache (Back after signing out) must not leave a dead button
+  p = await open({}, { role: 'person', name: 'Ana' }, true); await p.unroute('**/auth/logout'); let hang = 0; await p.route('**/auth/logout', () => { hang++; /* never answers */ });
+  await p.waitForSelector('header.site-banner button:has-text("Sign out")'); await p.click('header.site-banner button:has-text("Sign out")'); await p.waitForTimeout(200);
+  await p.click('header.site-banner button:has-text("Sign out")', { force: true }); await p.waitForTimeout(200); const stuck = hang;
+  await p.evaluate(() => window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true }))); await p.click('header.site-banner button:has-text("Sign out")', { force: true }); await p.waitForTimeout(300);
+  out('while a sign-out is in flight a second tap is ignored, and a page restored from the cache can sign out again', stuck === 1 && hang === 2); await p.ctx.close();
+
   // ---- signing out in the middle of setup keeps what was typed (as Home and Refresh do)
   p = await open({}, { role: 'person', name: 'Ana' }); await p.waitForSelector('button:has-text("Sign out")'); await p.click('button:has-text("Get started")'); await p.click('.option:has-text("Every 2 weeks")'); await p.waitForTimeout(400);
   await p.fill('input[aria-label="Paycheck amount"]', '1234');
