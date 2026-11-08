@@ -52,6 +52,8 @@ Anyone who is signed in sees a **Sign out** button: in the top bar of every scre
 **Admins only** page (what a signed-in person sees at `/admin/`) has a Sign out button too, so nobody is stuck there. Signing out posts to `/auth/logout` and lands on the sign-in page; to get in as the admin
 leave the name blank and use the admin passcode. **Signing out does not remove anyone's numbers from the browser** (they live in this browser, not on the account), so on a shared device delete them first (Settings, Your data).
 On very narrow phones (under 360px) the top-bar buttons drop to a second row instead of squeezing.
+**What signing out does and does not do:** it deletes the sign-in cookie in this browser. There is no server-side list of ended sessions, so a copy of that cookie would keep working until it expires (14 days for a person, 12 hours for the admin).
+To cut someone off everywhere at once, the admin resets that person's passcode or removes them (their cookie stops working at once); changing `ADMIN_PASSCODE` does the same for the admin.
 
 ## Installing it like an app
 
