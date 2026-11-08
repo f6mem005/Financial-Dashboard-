@@ -502,6 +502,7 @@
     if (cfg.assumed.length) out.appendChild(UI.card('Estimates in use', h('ul', null, cfg.assumed.map(function (a) { return h('li', null, a); }))));
 
     // moving to another device
+    out.appendChild(FD.session.slot('card'));
     out.appendChild(FD.install.card(app));
     out.appendChild(FD.transfer.exportCard(app));
     out.appendChild(UI.card('Restore from a backup', FD.transfer.restoreCard(app)));

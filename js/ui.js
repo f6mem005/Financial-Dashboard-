@@ -64,7 +64,8 @@
   }
   function banner(actions) {
     return h('header', { class: 'topbar site-banner' },
-      h('div', { class: 'brand-row' }, logo(30), h('span', { class: 'brand' }, 'Finance Sense')), actions || null);
+      h('div', { class: 'brand-row' }, logo(30), h('span', { class: 'brand' }, 'Finance Sense')),
+      h('div', { class: 'banner-actions' }, actions || null, FD.session ? FD.session.slot('bar') : null));   // Sign out shows here for anyone who is signed in
   }
 
   FD.ui = { logo: logo, banner: banner, btn: btn, card: card, tile: tile, moneyInput: moneyInput, field: field, select: select, chip: chip, toast: toast };

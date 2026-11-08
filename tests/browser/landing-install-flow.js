@@ -11,7 +11,7 @@ const done = { v: 1, mode: 'real', onboarded: true, answers: { payFreq: 'biweekl
   const b = await chromium.launch();
   async function open(o, init) {
     const ctx = await b.newContext(Object.assign({ viewport: { width: 390, height: 800 } }, o || {})); const p = await ctx.newPage(); const errs = [];
-    p.on('pageerror', (e) => errs.push(e.message)); p.on('console', (m) => { if (['error', 'warning'].includes(m.type())) errs.push(m.text()); });
+    p.on('pageerror', (e) => errs.push(e.message)); p.on('console', (m) => { if (['error', 'warning'].includes(m.type()) && !/\/auth\/session/.test((m.location() || {}).url || '')) errs.push(m.text()); /* a plain file server has no sign-in, so its 404 for /auth/session is expected here */ });
     if (init) await p.addInitScript(init);
     await p.goto(URL); p.errs = errs; p.ctx = ctx; return p;
   }

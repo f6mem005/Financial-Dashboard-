@@ -209,6 +209,7 @@
       !inApp ? h('ul', { class: 'landing-stats' }, FACTS.map(function (f) { return h('li', null, h('strong', null, f[0]), h('span', null, f[1])); })) : null,
       h('div', { class: 'landing-links' },
         !inApp ? link('Look at a demo first', function () { app.startDemo(); }) : null,
+        FD.session.slot('landing'),
         !inApp && resuming ? link('Start over with a blank setup', function () { app.startReal(); }) : null,
         inApp && S.mode === 'demo' ? link('Use my numbers', function () { app.startReal(); }) : null),
       !inApp ? phonePreview() : null));
@@ -260,6 +261,7 @@
 
   // The browser may offer to install the app at any moment; the Settings card redraws only itself (see js/install.js).
   FD.install.init();
+  FD.session.load();   // who is signed in, so every screen can show Sign out
 
   FD.app = app;
   function boot() { app.render(); }

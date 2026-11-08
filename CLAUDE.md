@@ -38,7 +38,7 @@ GitHub, so a push does not deploy. If that ever changes, a push could publish, s
   Playwright. Check phone-sized and desktop screens, light and dark mode, the demo, and a real onboarding run
   (including skipping every question).
 - The console must stay clean: no errors, no CSP or Trusted Types violations, and no `h(): attribute not allowed`
-  warnings.
+  warnings. The one exception: on a plain file server (no sign-in) the browser logs a 404 for `/auth/session`, the "who is signed in" check behind the Sign out button; browser tests ignore that exact address and nothing else.
 - Test hostile input, not just friendly input: tampered `localStorage`, hostile CSV files (huge cells, formula
   text, odd headers), two tabs open at once, and a failing `localStorage.setItem`.
 - Note: `node --check` cannot catch a `return` followed by a newline. Run the browser tests after editing JS.

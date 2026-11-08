@@ -7,7 +7,7 @@ let failed = 0; const out = (k, v) => { if (!v) failed++; console.log((v ? 'PASS
 (async () => {
   const b = await chromium.launch(); const errs = [];
   const p = await (await b.newContext({ viewport: { width: 390, height: 800 } })).newPage();
-  p.on('pageerror', (e) => errs.push('pageerror ' + e.message)); p.on('console', (m) => { if (['error', 'warning'].includes(m.type())) errs.push(m.text()); }); p.on('dialog', (d) => d.accept());
+  p.on('pageerror', (e) => errs.push('pageerror ' + e.message)); p.on('console', (m) => { if (['error', 'warning'].includes(m.type()) && !/\/auth\/session/.test((m.location() || {}).url || '')) errs.push(m.text()); /* a plain file server has no sign-in, so its 404 for /auth/session is expected here */ }); p.on('dialog', (d) => d.accept());
   const title = async () => (await p.textContent('h1')).trim(), skip = () => p.locator('.nav-row button:has-text("Skip")').count();
   const next = async () => { await p.click('.nav-row .primary'); await p.waitForTimeout(260); };
   const err = async () => (await p.textContent('#q-error')).trim();

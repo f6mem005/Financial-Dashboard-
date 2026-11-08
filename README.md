@@ -45,6 +45,14 @@ How it holds together:
 After a deploy, check from outside: `curl -sI <site>/` shows 401 and exactly one `content-security-policy` header;
 `curl -s --path-as-is -o /dev/null -w '%{http_code}' '<site>/auth/..%2findex.html'` is 401; and an unsigned `POST /` is refused.
 
+## Signing out (everyone)
+
+Anyone who is signed in sees a **Sign out** button: in the top bar of every screen, as a link on the first screen, and in a **Signed in** card at the top of Settings (which also shows who is signed in, and an
+**Admin tools** button for the admin). `js/session.js` asks `/auth/session` once; if nobody is signed in, or there is no sign-in at all (a plain file server), no button is shown. The sign-in gate's
+**Admins only** page (what a signed-in person sees at `/admin/`) has a Sign out button too, so nobody is stuck there. Signing out posts to `/auth/logout` and lands on the sign-in page; to get in as the admin
+leave the name blank and use the admin passcode. **Signing out does not remove anyone's numbers from the browser** (they live in this browser, not on the account), so on a shared device delete them first (Settings, Your data).
+On very narrow phones (under 360px) the top-bar buttons drop to a second row instead of squeezing.
+
 ## Installing it like an app
 
 The site is an installable web app: `manifest.webmanifest`, four icons in `icons/` (drawn by `scripts/make-icons.py`; `--no-calculator` gives the plainer version),

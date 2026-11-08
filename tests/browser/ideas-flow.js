@@ -14,7 +14,7 @@ const out = (k, v) => { if (!v) failed++; console.log((v ? 'PASS ' : 'FAIL ') + 
   const ctx = await b.newContext({ viewport: { width: 390, height: 900 }, acceptDownloads: true });
   const p = await ctx.newPage();
   p.on('pageerror', (e) => errs.push('pageerror ' + e.message));
-  p.on('console', (m) => { if (['error', 'warning'].includes(m.type())) errs.push(m.text()); });
+  p.on('console', (m) => { if (['error', 'warning'].includes(m.type()) && !/\/auth\/session/.test((m.location() || {}).url || '')) errs.push(m.text()); /* a plain file server has no sign-in, so its 404 for /auth/session is expected here */ });
   p.on('dialog', (d) => d.accept());
   const txt = () => p.innerText('#app');
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'fs-test-'));

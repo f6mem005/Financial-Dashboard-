@@ -1,7 +1,14 @@
 /* The sign-in page's script: posts the name (blank for the admin) and passcode to /auth/login.
-   A person's page reloads into the site; the admin goes to the admin tools. */
+   A person's page reloads into the site; the admin goes to the admin tools. It also runs the Sign out button on the "Admins only" page. */
 (function () {
   'use strict';
+  // The "Admins only" page has a Sign out button (a signed-in person who opens the admin address would otherwise be stuck there).
+  var so = document.getElementById('signout');
+  if (so) so.addEventListener('click', function () {
+    so.disabled = true;
+    function done() { location.assign('/'); }
+    fetch('/auth/logout', { method: 'POST', credentials: 'same-origin' }).then(done, done);
+  });
   var form = document.getElementById('f'); if (!form) return;
   var nm = document.getElementById('nm'), pc = document.getElementById('pc'), go = document.getElementById('go'), err = document.getElementById('err'), busy = false;
   nm.focus();

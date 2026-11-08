@@ -338,3 +338,18 @@ html { scroll-padding-bottom: 7rem; }   /* a focused control is never left under
 @media (max-width: 349px) { .tiles { grid-template-columns: repeat(auto-fit, minmax(104px, 1fr)); } }
 /* wide screens: fixed amount columns so figures line up row to row, wide enough for -$99,999.99 */
 @media (min-width: 560px) { .cal-row { column-gap: 10px; } .cal-date { width: 56px; } .cal-amt, .cal-bal { width: 7.5rem; min-width: 0; } }
+
+/* Sign out, for everyone who is signed in */
+.banner-actions { display: flex; align-items: center; gap: 6px; }
+.session-slot:empty { display: none; }
+.session-landing { display: contents; }
+
+/* the top bar: labels stay on one line; on the narrowest phones the buttons drop to their own row instead of squeezing */
+.site-banner { flex-wrap: wrap; row-gap: 4px; }
+.site-banner .brand { white-space: nowrap; }
+.banner-actions { margin-left: auto; }
+.banner-actions .btn { white-space: nowrap; }
+@media (max-width: 440px) {
+  .site-banner .brand { font-size: .95rem; } .site-banner .logo { width: 26px; height: 26px; } .site-banner .brand-row { gap: 6px; }
+  .banner-actions { gap: 4px; } .banner-actions .btn.small { min-height: 40px; padding: 4px 8px; font-size: .82rem; }
+}
