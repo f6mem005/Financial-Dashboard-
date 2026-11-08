@@ -53,7 +53,7 @@ export function signInPage(configured: boolean) {
 <main class="gate"><h1>${esc(SITE.heading)}</h1><p class="blurb">${esc(SITE.blurb)}</p>${body}</main>
 <script src="/auth/gate.js"></script></body></html>`;
 }
-const adminsOnly = () => `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex"><title>${esc(SITE.title)}</title>${iconTags}<link rel="stylesheet" href="/auth/gate.css"></head><body>${band()}<main class="gate"><h1>Admins only</h1><p class="blurb">This part of the site is for the administrator.</p><button type="button" id="signout" class="go">Sign out</button><p class="hint">To open this part, sign out, then sign in with the name left blank and the admin passcode.</p></main><script src="/auth/gate.js"></script></body></html>`;
+const adminsOnly = () => `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex"><title>${esc(SITE.title)}</title>${iconTags}<link rel="stylesheet" href="/auth/gate.css"></head><body>${band()}<main class="gate"><h1>Admins only</h1><p class="blurb">This part of the site is for the administrator.</p><button type="button" id="signout" class="go">Sign out</button><p id="so-err" class="err" role="alert"></p><p class="hint">To open this part, sign out, then sign in with the name left blank and the admin passcode.</p></main><script src="/auth/gate.js"></script></body></html>`;
 
 const decode = (s: string) => { try { return decodeURIComponent(s); } catch { return null; } };
 

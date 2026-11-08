@@ -11,7 +11,7 @@ const SEED = `if (!sessionStorage.getItem('s')) { localStorage.setItem('fd.v1', 
   const b = await chromium.launch();
   async function open(o, session, seed, delay) {
     const ctx = await b.newContext(Object.assign({ viewport: { width: 390, height: 800 } }, o || {})); const p = await ctx.newPage(); const errs = [], posts = [];
-    p.on('pageerror', (e) => errs.push(e.message)); p.on('console', (m) => { if (['error', 'warning'].includes(m.type()) && !/404|401|Failed to load resource/.test(m.text())) errs.push(m.text()); });
+    p.on('pageerror', (e) => errs.push(e.message)); p.on('console', (m) => { if (['error', 'warning'].includes(m.type()) && !/\/auth\/(session|logout)/.test((m.location() || {}).url || '')) errs.push(m.text()); });
     if (seed) await p.addInitScript(SEED);
     await p.route('**/auth/session', async (r) => { if (delay) await new Promise((x) => setTimeout(x, delay)); if (session === 'fail') return r.abort(); if (!session) return r.fulfill({ status: 401, contentType: 'application/json', body: '{"error":"Sign in"}' }); r.fulfill({ contentType: 'application/json', body: JSON.stringify(session) }); });
     await p.route('**/auth/logout', (r) => { posts.push(r.request().method()); r.fulfill({ contentType: 'application/json', body: '{"ok":true}' }); });
@@ -36,7 +36,7 @@ const SEED = `if (!sessionStorage.getItem('s')) { localStorage.setItem('fd.v1', 
   out('on the Home screen it is in the top bar', (await p.locator('header.site-banner button:has-text("Sign out")').count()) === 1);
   await p.evaluate(() => window.FD.app.go('settings')); await p.waitForTimeout(250);
   out('Settings has a Signed in card that names the person and warns the numbers stay in this browser', /Signed in/.test(await p.innerText('main')) && /signed in as Ana Lopez/.test(await p.innerText('main')) && /does not remove your numbers/.test(await p.innerText('main')) && (await p.locator('button:has-text("Admin tools")').count()) === 0);
-  out('only one Sign out button per place (top bar and the Settings card)', (await signouts(p)) === 2);
+  out('on Settings there are exactly two Sign out buttons: the top bar and the Signed in card', (await signouts(p)) === 2);
   await p.ctx.close();
 
   // ---- the admin: the card also offers the admin tools
@@ -48,6 +48,39 @@ const SEED = `if (!sessionStorage.getItem('s')) { localStorage.setItem('fd.v1', 
   await p.fill('input[aria-label="Current balance"]', '777'); const before = await signouts(p);
   await p.waitForSelector('button:has-text("Sign out")', { timeout: 4000 });
   out('a late answer adds the buttons without wiping what was typed', before === 0 && (await signouts(p)) === 2 && (await p.inputValue('input[aria-label="Current balance"]')) === '777'); await p.ctx.close();
+
+  // ---- a sign-out that fails must not look like it worked, and a double tap sends one request
+  for (const [how, handler] of [['the server refuses it (403)', (r) => r.fulfill({ status: 403, contentType: 'application/json', body: '{"error":"Bad request"}' })], ['the network is down', (r) => r.abort()]]) {
+    p = await open({}, { role: 'person', name: 'Ana' }, true); await p.unroute('**/auth/logout'); let n = 0; await p.route('**/auth/logout', (r) => { n++; handler(r); });
+    await p.waitForSelector('header.site-banner button:has-text("Sign out")'); const startUrl = p.url();
+    await p.click('header.site-banner button:has-text("Sign out")'); await p.waitForTimeout(500);
+    out('when ' + how + ', you stay where you are and are told it did not work', p.url() === startUrl && /Could not sign out/.test(await p.innerText('#toast')) && (await p.locator('header.site-banner button:has-text("Sign out")').count()) === 1);
+    await p.click('header.site-banner button:has-text("Sign out")'); await p.waitForTimeout(400); out('...and you can try again (a second request goes out)', n === 2); await p.ctx.close();
+  }
+  p = await open({}, { role: 'person', name: 'Ana' }, true); await p.unroute('**/auth/logout'); let slow = 0; await p.route('**/auth/logout', async (r) => { slow++; await new Promise((x) => setTimeout(x, 600)); r.fulfill({ contentType: 'application/json', body: '{"ok":true}' }); });
+  await p.waitForSelector('header.site-banner button:has-text("Sign out")'); const so = p.locator('header.site-banner button:has-text("Sign out")');
+  await Promise.all([p.waitForNavigation(), (async () => { await so.click(); await so.click({ force: true }).catch(() => {}); await so.click({ force: true }).catch(() => {}); })()]);
+  out('tapping Sign out three times quickly sends only one request', slow === 1); await p.ctx.close();
+
+  // ---- signing out in the middle of setup keeps what was typed (as Home and Refresh do)
+  p = await open({}, { role: 'person', name: 'Ana' }); await p.waitForSelector('button:has-text("Sign out")'); await p.click('button:has-text("Get started")'); await p.click('.option:has-text("Every 2 weeks")'); await p.waitForTimeout(400);
+  await p.fill('input[aria-label="Paycheck amount"]', '1234');
+  await Promise.all([p.waitForNavigation(), p.click('header.site-banner button:has-text("Sign out")')]);
+  out('signing out part-way through setup does not lose the amount that was being typed', (await p.evaluate(() => { const s = JSON.parse(localStorage.getItem('fd.v1') || '{}'); return s.answers && s.answers.pay && s.answers.pay.amount; })) === 1234); await p.ctx.close();
+
+  // ---- the "who is signed in" answer fails once, then the tab comes back into view: the button appears
+  { const ctx = await b.newContext({ viewport: { width: 390, height: 800 } }); p = await ctx.newPage(); let calls = 0;
+    await p.route('**/auth/session', (r) => { calls++; if (calls === 1) return r.fulfill({ status: 503, contentType: 'application/json', body: '{"error":"Unavailable"}' }); r.fulfill({ contentType: 'application/json', body: '{"role":"person","name":"Ana"}' }); });
+    await p.goto(URL); await p.waitForTimeout(400); const first = await signouts(p);
+    await p.evaluate(() => window.dispatchEvent(new Event('focus'))); await p.waitForSelector('button:has-text("Sign out")', { timeout: 3000 });
+    out('a failed first lookup (503) is retried when you come back to the tab, and the button then appears', first === 0 && calls === 2);
+    await p.evaluate(() => window.dispatchEvent(new Event('focus'))); await p.waitForTimeout(300); out('...and it stops asking once it has an answer', calls === 2); await ctx.close(); }
+  { const ctx = await b.newContext({ viewport: { width: 390, height: 800 } }); p = await ctx.newPage(); let calls = 0; await p.route('**/auth/session', (r) => { calls++; r.fulfill({ status: 401, contentType: 'application/json', body: '{"error":"Sign in"}' }); });
+    await p.goto(URL); await p.waitForTimeout(300); await p.evaluate(() => window.dispatchEvent(new Event('focus'))); await p.waitForTimeout(300); out('a plain "not signed in" (401) is not retried', calls === 1 && (await signouts(p)) === 0); await ctx.close(); }
+
+  // ---- demo mode: the Settings card does not talk about removing numbers that were never saved
+  p = await open({}, { role: 'person', name: 'Ana' }); await p.waitForSelector('button:has-text("Sign out")'); await p.click('button:has-text("Look at a demo first")'); await p.waitForTimeout(250); await p.evaluate(() => window.FD.app.go('settings')); await p.waitForTimeout(250);
+  out('in the demo the Signed in card does not tell you to delete your data', /Signed in/.test(await p.innerText('main')) && /nothing to remove/.test(await p.innerText('main')) && !/delete your data first/.test(await p.innerText('main'))); await p.ctx.close();
 
   // ---- a hostile name is only ever text
   p = await open({}, { role: 'person', name: '<img src=x onerror=alert(1)> Ana' }, true); await p.waitForSelector('header.site-banner button:has-text("Sign out")'); await p.evaluate(() => window.FD.app.go('settings')); await p.waitForTimeout(250);

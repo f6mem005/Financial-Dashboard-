@@ -10,6 +10,7 @@ const done = { v: 1, mode: 'real', onboarded: true, answers: { pain: ['runout'],
 const big = JSON.parse(JSON.stringify(done)); Object.assign(big.answers, { pay: { amount: 99999.99, none: false, nextPayday: null }, otherIncome: [{ id: 'side', monthly: 54321 }],
   bills: [{ id: 'rent', amount: 12345.67, due: 1 }, { id: 'phone', amount: 4567.89, due: 10 }], variable: [{ id: 'groceries', monthly: 8765.43 }], debts: [{ id: 'd-card', type: 'card', balance: 987654.32, min: 1234.56, apr: 24.99, aprKnown: true }] });
 Object.assign(big.settings, { openingBalance: -12345.67, savingsBalance: 1234567 });
+const mockSession = (ctxOrPage) => ctxOrPage.route('**/auth/session', (r) => r.fulfill({ contentType: 'application/json', body: JSON.stringify({ role: 'person', name: 'A person with a rather long name here' }) }));   // everyone is signed in, so the Sign out buttons are on every screen
 const TABS = ['home', 'forecast', 'plan', 'ideas', 'activity', 'settings'];
 /* Anything wider than the page, or text spilling out of its own box (which looks broken even when the page itself does not widen). */
 const probe = () => {
@@ -27,9 +28,9 @@ const probe = () => {
   for (const w of [320, 360, 390, 430]) {
     const phone = { viewport: { width: w, height: 760 }, isMobile: true, hasTouch: true };
     const bads = [];
-    const check = async (p, label) => { const r = await p.evaluate(probe); if (r.page || r.bad.length) bads.push(label + ': ' + JSON.stringify(r)); };
+    const check = async (p, label) => { await p.waitForSelector('.session-slot button', { timeout: 2500 }).catch(() => bads.push(label + ': no Sign out button was on screen, so its fit was not checked')); const r = await p.evaluate(probe); if (r.page || r.bad.length) bads.push(label + ': ' + JSON.stringify(r)); };
     // the first screen, the demo (rich data on every tab), the how-it-works screen
-    let ctx = await b.newContext(phone), p = await ctx.newPage(); await p.goto(URL); await check(p, 'landing');
+    let ctx = await b.newContext(phone); await mockSession(ctx); let p = await ctx.newPage(); await p.goto(URL); await check(p, 'landing');
     await p.click('button:has-text("Look at a demo first")'); await p.waitForTimeout(250);
     for (const t of TABS) { await p.evaluate((t) => window.FD.app.go(t), t); await p.waitForTimeout(220); await check(p, 'demo ' + t); }
     if (w >= 360) {   // typical amounts: every calendar row (the pay row too) fits on one line on any normal phone
@@ -39,16 +40,16 @@ const probe = () => {
     }
     await p.click('button:has-text("How it works")'); await p.waitForTimeout(200); await check(p, 'how it works'); await ctx.close();
     // a real, finished setup: every tab and every "change my answer" screen
-    ctx = await b.newContext(phone); p = await ctx.newPage(); await p.addInitScript(`localStorage.setItem('fd.v1', ${JSON.stringify(JSON.stringify(done))})`); await p.goto(URL);
+    ctx = await b.newContext(phone); await mockSession(ctx); p = await ctx.newPage(); await p.addInitScript(`localStorage.setItem('fd.v1', ${JSON.stringify(JSON.stringify(done))})`); await p.goto(URL);
     for (const t of TABS) { await p.evaluate((t) => window.FD.app.go(t), t); await p.waitForTimeout(220); await check(p, 'real ' + t); }
     for (let i = 0; i < 13; i++) { await p.evaluate((i) => window.FD.app.editQuestion(i), i); await p.waitForTimeout(100); await check(p, 'edit answer ' + i); await p.evaluate(() => { window.FD.app.ui.editing = null; window.FD.app.render(); }); }
     await ctx.close();
     // every setup question and the summary
-    ctx = await b.newContext(phone); p = await ctx.newPage(); await p.goto(URL); await p.click('button:has-text("Get started")');
+    ctx = await b.newContext(phone); await mockSession(ctx); p = await ctx.newPage(); await p.goto(URL); await p.click('button:has-text("Get started")');
     for (let i = 0; i <= 13; i++) { await p.evaluate((i) => window.FD.app.goStep(i), i); await p.waitForTimeout(100); await check(p, 'setup step ' + (i + 1)); }
     await ctx.close();
     // large amounts (a big salary, a large debt, an overdrawn account) on every tab
-    ctx = await b.newContext(phone); p = await ctx.newPage(); await p.addInitScript(`localStorage.setItem('fd.v1', ${JSON.stringify(JSON.stringify(big))})`); await p.goto(URL);
+    ctx = await b.newContext(phone); await mockSession(ctx); p = await ctx.newPage(); await p.addInitScript(`localStorage.setItem('fd.v1', ${JSON.stringify(JSON.stringify(big))})`); await p.goto(URL);
     for (const t of TABS) { await p.evaluate((t) => window.FD.app.go(t), t); await p.waitForTimeout(220); await check(p, 'big numbers ' + t); }
     // the cash calendar with long amounts in a real row, and the chart tip (hidden until used) fully on screen
     await p.evaluate(() => window.FD.app.go('home')); await p.waitForTimeout(200);
@@ -56,7 +57,7 @@ const probe = () => {
     if (rows < 3) bads.push('the cash calendar did not render (' + rows + ' rows), so the big-amount check would prove nothing');
     await p.evaluate(() => document.querySelectorAll('li.cal-row').forEach((li, i) => { const a = li.querySelector('.cal-amt'), bl = li.querySelector('.cal-bal'), l = li.querySelector('.cal-label'); if (a && a.textContent) a.textContent = i % 2 ? '-$12,345.67' : '+$99,999.99'; bl.textContent = '-$12,345.67'; l.textContent = 'Subscriptions and memberships'; }));
     await check(p, 'every calendar row (including the pay row) with -$12,345.67');
-    await ctx.close(); ctx = await b.newContext(phone); p = await ctx.newPage(); await p.goto(URL); await p.click('button:has-text("Look at a demo first")'); await p.evaluate(() => window.FD.app.go('ideas')); await p.waitForTimeout(300);
+    await ctx.close(); ctx = await b.newContext(phone); await mockSession(ctx); p = await ctx.newPage(); await p.goto(URL); await p.click('button:has-text("Look at a demo first")'); await p.evaluate(() => window.FD.app.go('ideas')); await p.waitForTimeout(300);
     await p.locator('.chart-wrap').first().focus();
     for (const [key, times] of [['ArrowRight', 1], ['Shift+ArrowRight', 40], ['Shift+ArrowLeft', 80]]) {   // first point, far right end, far left end
       for (let i = 0; i < times; i++) await p.keyboard.press(key); await p.waitForTimeout(100);
