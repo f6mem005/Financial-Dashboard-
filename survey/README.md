@@ -12,7 +12,7 @@ The published survey sits behind a sign-in (see below): invitees use the name an
 - Pick exactly three features, then **put them in order by dragging** (mouse or touch) **or with the up/down arrows**
   (keyboard friendly, announced to screen readers).
 - Write free-text answers (up to 2,000 characters each): the one thing they wish a dashboard would tell them, any missing features or ideas (asked in the first section, after the feature questions and the two questions about what would make them stop and what they wish it would tell them), apps they loved or hated, and a final "anything else?". Only the first is required. They can also optionally leave an email to try an early version.
-- Close the page and come back: progress is kept in their own browser until they finish.
+- Close the page and come back: progress is kept in their own browser (for 7 days) until they finish. Every question screen also has a **Save and exit** button: it makes that visible, checks the browser really saved (if storage is blocked it says so and stays put), returns to the first screen with a note ("saved on this device, come back within 7 days, nothing has been sent yet") and the button there becomes "Continue where I left off". Nothing is sent to the server until Finish, and progress does not follow a person to another device or browser.
 
 ## Try it on your computer
 

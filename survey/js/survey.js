@@ -43,8 +43,8 @@
     if (!locked) lastNav = now;
     return locked;
   }
-  function save() {
-    try { root.localStorage.setItem(cfg.storageKey, JSON.stringify({ v: 1, t: Date.now(), rid: state.rid, started: state.started, qid: state.qid, seed: state.seed, answers: state.answers })); } catch (e) { /* the survey still works without saving */ }
+  function save() {   // true when the progress really was written (the survey still works without saving, so a failure is not an error here)
+    try { root.localStorage.setItem(cfg.storageKey, JSON.stringify({ v: 1, t: Date.now(), rid: state.rid, started: state.started, qid: state.qid, seed: state.seed, answers: state.answers })); return true; } catch (e) { return false; }
   }
   function clearSaved() { try { root.localStorage.removeItem(cfg.storageKey); } catch (e) { /* ignore */ } }
   function say(msg) { live.textContent = ''; setTimeout(function () { live.textContent = msg; }, 30); }
@@ -292,11 +292,23 @@
       var w = here();
       if (w.idx === w.ids.length - 1) finish(); else go(w.ids[w.idx + 1]);
     }
+    // Save and exit: progress is already saved after every answer, so this only makes that visible, checks it really worked, and goes back to the first screen.
+    function onExit() {
+      if (state.sending) return;
+      if (cfg.hasArrived && cfg.hasArrived(state.rid)) { err.textContent = 'Your answers were already sent, so there is nothing left to save. You can still fix your email below.'; return; }
+      state.started = false;
+      if (!save()) { state.started = true; err.textContent = 'This browser would not save your answers (private browsing or blocked storage?). Keep this page open, or they will be lost.'; return; }
+      state.exitNote = hasAnswers()
+        ? 'Your answers are saved on this device. Come back within 7 days, on this same browser, and tap \u201cContinue where I left off\u201d. ' + (state.attempt ? 'Your last attempt to send was not confirmed.' : 'Nothing has been sent to us yet.') + ' Do not use this on a shared computer: your answers, and any email you gave, stay on this device until you tap Start over.'
+        : 'Your place is saved on this device. Come back within 7 days, on this same browser, and tap the button below. ' + (state.attempt ? 'Your last attempt to send was not confirmed.' : 'Nothing has been sent to us yet.') + ' Do not use this on a shared computer: your answers, and any email you gave, stay on this device until you tap Start over.';
+      render(true); say('Saved. ' + state.exitNote);
+    }
     primary = btn(label(), onNext, 'primary');
+    var exitRow = h('div', { class: 'exit-row' }, btn('Save and exit', onExit, 'link'));
     var nav = h('div', { class: 'nav' }, btn('Back', onBack, 'ghost'), primary);
     return h('main', { class: 'screen', id: 'main' }, progress(q),
       h('h1', { tabindex: '-1', id: 'title' }, q.title, q.required ? h('span', { class: 'req' }, 'Required') : null),
-      q.help ? h('p', { class: 'help' }, q.help) : null, body, err, nav);
+      q.help ? h('p', { class: 'help' }, q.help) : null, body, err, exitRow, nav);
   }
 
   /* The banner above every screen: the app name and "Questionnaire". On the first screen it is a larger band that also says who sent it. */
@@ -316,8 +328,10 @@
 
   function introScreen() {
     var resuming = hasAnswers(), armed = false, armedAt = 0, goesToDemo = !resuming && demoApplies() && !demoSeen();
+    var note = state.exitNote || null; state.exitNote = null;   // shown once, right after Save and exit
     return h('main', { class: 'screen intro', id: 'main' },
       h('h1', { tabindex: '-1', id: 'title' }, SV.intro.title),
+      note ? h('p', { class: 'saved-note', role: 'status' }, note) : null,
       h('p', { class: 'help' }, SV.intro.lead),
       h('ul', { class: 'points panel' }, SV.intro.points.map(function (p) { return h('li', null, p); })),
       cfg.privacyNote ? h('section', { class: 'privacy' }, h('h2', null, 'Your privacy'), h('p', { class: 'fine' }, cfg.privacyNote)) : null,
@@ -368,7 +382,7 @@
     var s = mount.querySelector('.skip-email'); if (s) s.disabled = on;
     if (SV.session) SV.session.refresh();   // Sign out is disabled while sending
     // nothing may be edited while a send is running: what was captured is what goes out, so a late change would be silently lost
-    Array.prototype.forEach.call(mount.querySelectorAll('input, textarea, select, .choice, .nav .ghost'), function (el) {
+    Array.prototype.forEach.call(mount.querySelectorAll('input, textarea, select, .choice, .nav .ghost, .exit-row .btn'), function (el) {
       if (on) { if (!el.disabled) { el.disabled = true; el._busyLocked = true; } }
       else if (el._busyLocked) { el.disabled = false; el._busyLocked = false; }
     });

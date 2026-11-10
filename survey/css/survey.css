@@ -72,6 +72,9 @@ h1 { font-size: 1.5rem; line-height: 1.25; }
 .btn { border: 1px solid var(--line); background: var(--surface); border-radius: 12px; padding: 12px 16px; min-height: 48px; cursor: pointer; font-weight: 600; }
 .btn.primary { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
 .btn.ghost { background: transparent; }
+/* Save and exit sits at the end of the question, above the pinned Back / Next bar */
+.exit-row { display: flex; justify-content: center; margin-top: 6px; }
+.saved-note { background: var(--note); border-radius: 12px; padding: 12px 14px; font-weight: 600; margin: 0; overflow-wrap: anywhere; }
 .btn.link { border-color: transparent; background: transparent; color: var(--accent); }
 .btn.big { width: 100%; padding: 16px; font-size: 1.1rem; }
 .nav { position: fixed; left: 0; right: 0; bottom: 0; display: flex; gap: 10px; justify-content: space-between; padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); background: var(--bg); border-top: 1px solid var(--line); }
