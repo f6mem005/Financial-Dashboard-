@@ -270,11 +270,13 @@
       h('p', { class: 'tour-caption' }, slide.caption));
   }
   function tourBody() {
-    var T = SV.tour || [], i = 0, prev, next, count = h('span', { class: 'tour-count' }), stage = h('div', { class: 'tour-stage', 'aria-live': 'polite' });
+    var T = SV.tour || [], i = 0, prev, next, count = h('span', { class: 'tour-count', 'aria-live': 'polite' }), stage = h('div', { class: 'tour-stage' });
     function draw() {
+      var had = doc.activeElement;   // a button about to be disabled (the last or first screen) must not drop a keyboard user's focus
       stage.textContent = ''; stage.appendChild(slideNode(T[i]));
-      count.textContent = 'Example screen ' + (i + 1) + ' of ' + T.length;
+      count.textContent = 'Example screen ' + (i + 1) + ' of ' + T.length + ': ' + T[i].title;   // read out on every change; the card itself is read on request, not every time
       prev.disabled = i === 0; next.disabled = i === T.length - 1;
+      if (had && had.disabled) (had === next ? prev : next).focus({ preventScroll: true });
     }
     prev = btn('Previous screen', function () { if (i > 0) { i--; draw(); } }, 'ghost small');
     next = btn('Next screen', function () { if (i < T.length - 1) { i++; draw(); } }, 'ghost small');

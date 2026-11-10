@@ -43,11 +43,18 @@ const seed = (qid, answers) => `localStorage.setItem('${KEY}', ${JSON.stringify(
   out('it starts on screen 1 of 5; Previous is off, Next screen is on, and you may continue without doing anything', /Example screen 1 of 5/.test(await p.innerText('.tour-count')) && (await p.locator('button:has-text("Previous screen")').isDisabled()) && (await p.locator('button:has-text("Next screen")').isEnabled()) && !(await p.locator('.req').count()));
   const seen = [];
   for (let i = 0; i < 5; i++) { seen.push((await p.innerText('.tp-title')).trim()); if (i < 4) { await p.click('button:has-text("Next screen")'); await p.waitForTimeout(80); } }
-  out('paging shows Home, Forecast, Plan, Ideas and Spend less in order', JSON.stringify(seen) === JSON.stringify(['Home', 'Forecast', 'Plan', 'Ideas', 'Spend less']));
+  out('paging shows Home, Forecast, Plan, Ideas and Ideas: spend less in order', JSON.stringify(seen) === JSON.stringify(['Home', 'Forecast', 'Plan', 'Ideas', 'Ideas: spend less']));
   out('on the last example screen Next screen is off and the counter says 5 of 5', /Example screen 5 of 5/.test(await p.innerText('.tour-count')) && (await p.locator('button:has-text("Next screen")').isDisabled()));
   out('the Ideas example is labelled as an illustration, not advice', await (async () => { await p.click('button:has-text("Previous screen")'); await p.waitForTimeout(80); return /Illustration/.test(await p.innerText('.tour-phone')) && /not advice/.test(await p.innerText('.tour-caption')); })());
   await p.click('button:has-text("Previous screen")'); await p.click('button:has-text("Previous screen")'); await p.click('button:has-text("Previous screen")'); await p.waitForTimeout(80);
   out('Previous goes back to screen 1', /Example screen 1 of 5/.test(await p.innerText('.tour-count')));
+
+  // keyboard: paging with Enter never drops focus when a button becomes disabled at either end
+  await p.focus('button:has-text("Next screen")'); for (let i = 0; i < 4; i++) { await p.keyboard.press('Enter'); await p.waitForTimeout(60); }
+  out('keyboard: Enter on Next screen to the last screen leaves focus on Previous screen (not lost to the page)', /Example screen 5 of 5/.test(await p.innerText('.tour-count')) && await p.evaluate(() => document.activeElement && document.activeElement.tagName === 'BUTTON' && /Previous screen/.test(document.activeElement.textContent)));
+  for (let i = 0; i < 4; i++) { await p.keyboard.press('Enter'); await p.waitForTimeout(60); }
+  out('keyboard: Enter on Previous screen back to the first screen leaves focus on Next screen', /Example screen 1 of 5/.test(await p.innerText('.tour-count')) && await p.evaluate(() => document.activeElement && document.activeElement.tagName === 'BUTTON' && /Next screen/.test(document.activeElement.textContent)));
+  out('the screen count and title are what is announced on a change, not the whole card', (await p.getAttribute('.tour-count', 'aria-live')) === 'polite' && !(await p.getAttribute('.tour-stage', 'aria-live')) && /: Home$/.test(await p.innerText('.tour-count')));
 
   // ---- the two feedback questions
   await nextQ(p);

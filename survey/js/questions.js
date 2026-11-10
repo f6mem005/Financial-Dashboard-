@@ -111,7 +111,7 @@
     { id: 'ideas', title: 'Ideas', caption: 'How much you could set aside, and what saving it could grow into. General education only, not advice.',
       screen: [{ k: 'label', t: 'You could set aside about' }, { k: 'big', t: '$140 a month' }, { k: 'row', a: 'First, a cushion', b: '', c: '$1,000' }, { k: 'row', a: 'Then, something for later', b: '', c: '' },
         { k: 'note', t: 'Illustration: $140 a month for 10 years could grow to roughly $17,000 to $24,000. An example, not a promise.' }] },
-    { id: 'spend', title: 'Spend less', caption: 'Places to cut back, and charges that look doubled up.',
+    { id: 'spend', title: 'Ideas: spend less', caption: 'Places to cut back, and charges that look doubled up.',
       screen: [{ k: 'label', t: 'Subscriptions cost' }, { k: 'big', t: '$1,020 a year' }, { k: 'note', t: 'About $85 a month. Worth a look for ones you rarely use.' },
         { k: 'label', t: 'These look like the same bill' }, { k: 'row', a: 'Streaming', b: 'Nov 3', c: '$12' }, { k: 'row', a: 'Streaming', b: 'Nov 4', c: '$12' }] }
   ];
