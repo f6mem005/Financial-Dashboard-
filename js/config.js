@@ -80,7 +80,7 @@
     var annual = arr(answers.annual).map(function (a) {
       var cat = C.find(C.ANNUAL, a && a.id);
       var amt = a && a.amount != null && a.amount !== '' ? U.num(a.amount, 0, 0, 1e6) : (cat ? cat.d : 0);
-      return { id: U.cleanStr(a && a.id, 40) || U.uid('ann'), name: U.cleanStr(a && a.name, 40) || (cat ? cat.label : 'Yearly cost'), amount: amt, month: Math.round(U.num(a && a.month, cat ? cat.month : 6, 1, 12)) };
+      return { id: U.cleanStr(a && a.id, 40) || U.uid('ann'), name: U.cleanStr(a && a.name, 40) || (cat ? (cat.short || cat.label) : 'Yearly cost'), amount: amt, month: Math.round(U.num(a && a.month, cat ? cat.month : 6, 1, 12)) };
     }).filter(function (a) { return a.amount > 0; });
 
     /* ---- debts ---- */
@@ -92,7 +92,7 @@
       var minGuess = !d || d.min === null || d.min === undefined || d.min === '';
       var min = minGuess ? Math.max(25, Math.ceil(balance * (d && d.type === 'card' ? 0.03 : 0.02))) : U.num(d.min, 0, 0, 1e7);
       return { id: U.cleanStr(d && d.id, 40) || U.uid('debt'), type: U.cleanStr(d && d.type, 20) || 'other',
-        name: U.cleanStr(d && d.name, 40) || (cat ? cat.label : 'Debt'), balance: balance, min: min, apr: apr, aprGuess: aprGuess, minGuess: minGuess };
+        name: U.cleanStr(d && d.name, 40) || (cat ? (cat.short || cat.label) : 'Debt'), balance: balance, min: min, apr: apr, aprGuess: aprGuess, minGuess: minGuess };
     }).filter(function (d) { return d.balance > 0; });
     if (debts.some(function (d) { return d.aprGuess; })) assumed.push('Typical interest rates for debts you weren’t sure about');
 
@@ -103,7 +103,7 @@
       var created = U.parseISO(g && g.created) ? g.created : U.iso(now);
       var date = U.parseISO(g && g.date) ? g.date : U.iso(U.addMonths(now, cat ? cat.months : 12));
       return { id: U.cleanStr(g && g.id, 40) || U.uid('goal'), type: U.cleanStr(g && g.type, 20) || 'other',
-        name: U.cleanStr(g && g.name, 40) || (cat ? cat.label : 'Goal'), target: target, date: date,
+        name: U.cleanStr(g && g.name, 40) || (cat ? (cat.short || cat.label) : 'Goal'), target: target, date: date,
         saved0: U.num(g && g.saved0, 0, 0, 1e8), created: created };
     }).filter(function (g) { return g.target > 0; });
 

@@ -44,17 +44,21 @@ let failed = 0; const out = (k, v) => { if (!v) failed++; console.log((v ? 'PASS
   // ---- bills: a chosen bill needs an amount
   out('bills: no Skip', /fixed bills/.test(await title()) && (await skip()) === 0);
   await next(); out('bills: nothing chosen is refused', /None \/ N\/A/.test(await err()));
+  out('bills: home owners are offered mortgage, HOA dues, property tax and home insurance next to rent', (await p.locator('.chip:text-is("Rent")').count()) === 1 && (await p.locator('.chip:text-is("Mortgage")').count()) === 1 && (await p.locator('.chip:text-is("HOA / association dues")').count()) === 1 && (await p.locator('.chip:text-is("Property tax")').count()) === 1 && (await p.locator('.chip:text-is("Home / renters insurance")').count()) === 1 && /mortgage/i.test(await p.innerText('main')));
   await p.click('.chip:has-text("Rent")'); await next();
   out('bills: a bill with no amount is refused by name', /Enter an amount for Rent/.test(await err()));
   out('bills: the box no longer pretends a typical amount will be used', (await p.getAttribute('input[aria-label="Per month"]', 'placeholder')) === '0' && !/used if blank/.test(await p.innerText('main')));
   await p.fill('input[aria-label="Per month"]', '900'); await next();
   // ---- everyday spending: 0 is an answer
   out('spending: no Skip', /rest of your money/.test(await title()) && (await skip()) === 0);
+  out('spending: home upkeep is offered', (await p.locator('.chip:text-is("Home upkeep")').count()) === 1);
   await p.click('.chip:has-text("Groceries")'); await next(); out('spending: a blank amount is refused', /Enter an amount for Groceries/.test(await err()));
   await p.fill('input[aria-label="Per month"]', '0'); await next();
   // ---- yearly costs, debts
-  out('yearly costs: no Skip', /once-or-twice-a-year/.test(await title()) && (await skip()) === 0); await p.click('.chip:has-text("None / N/A ($0)")'); await next();
+  out('yearly costs: no Skip', /once-or-twice-a-year/.test(await title()) && (await skip()) === 0); out('yearly costs: home owners are offered property tax, home insurance, HOA yearly dues and big repairs', (await p.locator('.chip:text-is("Property tax")').count()) === 1 && (await p.locator('.chip:text-is("Home insurance")').count()) === 1 && (await p.locator('.chip:text-is("HOA yearly dues")').count()) === 1 && (await p.locator('.chip:text-is("Big home repairs")').count()) === 1);
+  await p.click('.chip:has-text("None / N/A ($0)")'); await next();
   out('debts: no Skip', /What do you owe/.test(await title()) && (await skip()) === 0);
+  out('debts: a home equity loan is offered, and the help says a mortgage is a fixed bill', (await p.locator('.chip:text-is("Home equity loan / HELOC")').count()) === 1 && /mortgage goes under fixed bills/.test(await p.innerText('main')));
   await p.click('.chip:has-text("Credit card")'); await next(); out('debts: a debt with no balance is refused', /what you owe and the smallest payment/.test(await err()));
   await p.fill('input[aria-label="Balance"]', '1000'); await p.fill('input[aria-label="Minimum payment"]', '35'); await next(); out('debts: a debt with no rate is refused', /yearly interest rate/.test(await err()));
   await p.click('.chip:has-text("I don’t know")'); await next();

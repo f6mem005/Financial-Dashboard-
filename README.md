@@ -45,9 +45,17 @@ How it holds together:
 After a deploy, check from outside: `curl -sI <site>/` shows 401 and exactly one `content-security-policy` header;
 `curl -s --path-as-is -o /dev/null -w '%{http_code}' '<site>/auth/..%2findex.html'` is 401; and an unsigned `POST /` is refused.
 
+## Renters and home owners
+
+The lists in `js/catalog.js` cover both. Fixed bills: rent, **mortgage**, **HOA / association dues**, **property tax** and **home / renters insurance** (the last two for people whose mortgage payment does not already include them).
+Everyday spending: **home upkeep**. Yearly costs: property tax, home insurance, HOA yearly dues, big home repairs (roof, heating and cooling, appliances). Debts: **home equity loan / HELOC**. Goals: **home down payment**, **home repair fund**.
+A **mortgage is a fixed bill, not a debt-plan debt** (it would be counted twice, and the debt plan would push extra payments at a low-rate home loan); the debts question says so.
+Bank CSV imports recognise mortgage, HOA, property tax, home insurance and home-improvement lines (`RULES` in `js/csv.js`, before the generic "loan" rule). Housing costs are never in the Ideas "flexible" list (`FLEX` in `js/ideas.js`), so they are never suggested as something to trim.
+Lists show the `short` name when an item has one (bills, spending, yearly costs, debts and goals all do now), so long labels are never cut off at 40 characters.
+
 ## Getting around on a phone
 
-The bottom tab bar is `position: fixed`. The logo and name in the top bar of every main screen are also a **Home** button, so there is always a way back even if the tab bar is out of sight.
+The bottom tab bar is `position: fixed`. The logo and name in the top bar of every main screen are also a **Home** button, so there is a second way home at the top of the page. On wide screens (a computer, an iPad, a phone turned sideways) the tab bar sits under the top bar and is sticky, so it stays on screen as you scroll.
 The page's sideways guard (`overflow-x: clip`) sits on the app container `#app`, never on `html` or `body` (overflow on the page root can strand fixed bars on very tall pages in iPhone Safari and
 home-screen apps). `tests/browser/mobile-fit-flow.js` checks the tab bar on the longest screen (Ideas) at the top, middle and bottom of the page.
 

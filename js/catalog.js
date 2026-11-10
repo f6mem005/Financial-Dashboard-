@@ -21,6 +21,10 @@
   ];
   var BILLS = [
     { id: 'rent', label: 'Rent', d: 1100, due: 1 },
+    { id: 'mortgage', label: 'Mortgage (home loan payment)', short: 'Mortgage', d: 1800, due: 1 },
+    { id: 'hoa', label: 'HOA, condo or association dues', short: 'HOA / association dues', d: 300, due: 1 },
+    { id: 'proptax', label: 'Property tax (if not in your mortgage payment)', short: 'Property tax', d: 350, due: 1 },
+    { id: 'homeins', label: 'Home or renters insurance (if not in your mortgage payment)', short: 'Home / renters insurance', d: 120, due: 1 },
     { id: 'phone', label: 'Phone', d: 60, due: 15 },
     { id: 'carpay', label: 'Car payment', d: 300, due: 5 },
     { id: 'carins', label: 'Car insurance', d: 120, due: 10 },
@@ -32,6 +36,7 @@
   ];
   var VARIABLE = [
     { id: 'groceries', label: 'Groceries', d: 300 },
+    { id: 'homerepair', label: 'Home repairs and upkeep', short: 'Home upkeep', d: 150 },
     { id: 'dining', label: 'Eating out / delivery', short: 'Eating out', d: 160 },
     { id: 'transport', label: 'Gas / transit', d: 120 },
     { id: 'shopping', label: 'Shopping', d: 100 },
@@ -41,6 +46,10 @@
     { id: 'family', label: 'Supporting family', d: 100 }
   ];
   var ANNUAL = [
+    { id: 'proptaxy', label: 'Property tax (paid once or twice a year)', short: 'Property tax', d: 3500, month: 11 },
+    { id: 'homeinsy', label: 'Home insurance (paid once a year)', short: 'Home insurance', d: 1400, month: 3 },
+    { id: 'hoayear', label: 'HOA or association yearly dues or assessment', short: 'HOA yearly dues', d: 600, month: 1 },
+    { id: 'homebig', label: 'Big home repairs (roof, heating and cooling, appliances)', short: 'Big home repairs', d: 1500, month: 6 },
     { id: 'carreg', label: 'Car registration', d: 150, month: 6 },
     { id: 'annsubs', label: 'Annual subscriptions', d: 120, month: 3 },
     { id: 'gifts', label: 'Holidays / gifts', d: 400, month: 12 },
@@ -54,11 +63,14 @@
     { id: 'bnpl', label: 'Buy Now Pay Later', apr: 0 },
     { id: 'carloan', label: 'Car loan', apr: 8 },
     { id: 'personal', label: 'Personal loan', apr: 12 },
+    { id: 'heloc', label: 'Home equity loan or line (HELOC)', short: 'Home equity loan / HELOC', apr: 8.5 },
     { id: 'famdebt', label: 'Family', apr: 0 }
   ];
   var GOALS = [
     { id: 'emergency', label: 'Emergency fund', d: 1000, months: 8 },
     { id: 'deposit', label: 'Apartment deposit', d: 2000, months: 10 },
+    { id: 'housedown', label: 'Down payment on a home', short: 'Home down payment', d: 20000, months: 36 },
+    { id: 'homefund', label: 'Home repair fund', d: 3000, months: 18 },
     { id: 'car', label: 'Car', d: 4000, months: 18 },
     { id: 'trip', label: 'Trip', d: 1200, months: 9 },
     { id: 'moving', label: 'Moving out', d: 3000, months: 12 },
@@ -131,7 +143,7 @@
       help: 'Tap all that apply and enter a monthly amount for each (0 is fine), or choose None / N/A.',
       catalog: OTHER_INCOME, amountKey: 'monthly', amountLabel: 'Per month', noneLabel: 'None / N/A ($0)', other: true },
     { id: 'bills', section: 'Bills and spending', kind: 'rows', required: true, title: 'Which fixed bills do you have?',
-      help: 'Tap all that apply, then enter the amount and the day of the month it’s due, or choose None / N/A.',
+      help: 'Rent or own, it’s all here: rent, mortgage, HOA dues, property tax, home insurance and more. Tap all that apply, then enter the amount and the day of the month it’s due, or choose None / N/A.',
       catalog: BILLS, amountKey: 'amount', amountLabel: 'Per month', dueKey: 'due', noneLabel: 'None / N/A ($0)', other: true },
     { id: 'variable', section: 'Bills and spending', kind: 'rows', required: true, title: 'Where does the rest of your money usually go?',
       help: 'Tap all that apply and enter a monthly amount for each (0 is fine), or choose None / N/A.',
@@ -140,7 +152,7 @@
       help: 'We’ll set money aside so they don’t surprise you. Enter an amount for each (0 is fine), or choose None / N/A.',
       catalog: ANNUAL, amountKey: 'amount', amountLabel: 'Each time', monthKey: 'month', noneLabel: 'None / N/A ($0)', other: true },
     { id: 'debts', section: 'Debt', kind: 'rows', required: true, title: 'What do you owe?',
-      help: 'Add what you owe, the smallest payment you must make each month, and the yearly interest rate, or choose None / N/A.',
+      help: 'Add what you owe, the smallest payment you must make each month, and the yearly interest rate, or choose None / N/A. A mortgage goes under fixed bills, not here.',
       catalog: DEBTS, debt: true, noneLabel: 'None / N/A', other: true },
     { id: 'pain', section: 'What you want', kind: 'multi', title: 'Which sounds most like you?',
       help: 'Pick as many as you like.', options: PAIN },

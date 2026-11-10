@@ -209,7 +209,7 @@
   function changesCard(app) {
     var q = function (label, id) { return UI.btn(label, function () { editAnswer(app, id); }, 'small'); };
     return UI.card('When something changes', [
-      h('p', { class: 'q-help' }, 'New job, a raise, a rent increase, a new subscription, a new debt: update that one answer and the forecast, safe-to-spend and ideas all use it from today. Spending you already logged stays as it was. Nothing is lost by changing an answer.'),
+      h('p', { class: 'q-help' }, 'New job, a raise, a rent or mortgage change, a new HOA fee, a new subscription, a new debt: update that one answer and the forecast, safe-to-spend and ideas all use it from today. Spending you already logged stays as it was. Nothing is lost by changing an answer.'),
       h('div', { class: 'chips' }, q('My pay changed', 'pay'), q('A bill changed', 'bills'), q('My spending changed', 'variable'), q('New debt', 'debts'), q('New goal', 'goals'),
         UI.btn('Update my balance', function () { app.go('settings'); }, 'small')),
       h('p', { class: 'hint' }, 'Logging your spending keeps this honest. We compare it with what you told us and point out differences at the top of this page.')]);
