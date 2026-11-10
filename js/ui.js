@@ -63,7 +63,7 @@
       h('path', { d: 'M20 9 L25 9 L25 14', class: 'logo-line' }));
   }
   function banner(actions, onHome) {   // onHome: the logo and name become a Home button (so there is always a way back, even if the tab bar is out of sight)
-    var brand = h('div', { class: 'brand-row' }, logo(30), h('span', { class: 'brand' }, 'Finance Sense'));
+    var brand = h('span', { class: 'brand-row' }, logo(30), h('span', { class: 'brand' }, 'Finance Sense'));
     return h('header', { class: 'topbar site-banner' },
       onHome ? h('button', { type: 'button', class: 'brand-btn', onclick: onHome, 'aria-label': 'Finance Sense. Go to Home' }, brand) : brand,
       h('div', { class: 'banner-actions' }, actions || null, FD.session ? FD.session.slot('bar') : null));   // Sign out shows here for anyone who is signed in

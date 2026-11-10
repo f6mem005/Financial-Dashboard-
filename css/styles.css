@@ -282,7 +282,8 @@ html { scroll-padding-bottom: 7rem; }   /* a focused control is never left under
   .shell { display: flex; flex-direction: column; }
   .shell > * { width: 100%; max-width: 720px; margin-left: auto; margin-right: auto; }
   .shell > .demo-banner { max-width: none; }
-  .shell .tabs { order: 1; margin-top: 12px; }
+  /* On a wide screen (a computer, an iPad, a phone turned sideways) the tab bar sits under the top bar. It must STAY on screen when you scroll a long page, or there is no way back to Home: sticky, not static. */
+  .shell .tabs { order: 1; margin-top: 12px; position: sticky; top: 0; z-index: 20; background: var(--surface); }
   .shell .topbar { order: 0; } .shell .screen { order: 2; } .shell .disclaimer { order: 3; }
   .shell { padding-bottom: 24px; }
   .toast { bottom: 24px; }
