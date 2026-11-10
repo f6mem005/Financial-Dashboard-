@@ -157,7 +157,7 @@
     var n = responses.length, byId = Object.create(null);
     var feats = F.map(function (f) { var o = { id: f.id, label: f.label, desc: f.desc, counts: [0, 0, 0, 0, 0], unsure: 0, picked: 0, rankPoints: 0, rank1: 0, never: 0 }; byId[f.id] = o; return o; });
     var base = { q1: 0, q2: 0, q3: 0, q4: 0 };
-    var out = { n: n, smallSample: n < 30, features: null, order: null, questions: {}, texts: { q12: [], q13: [], q14: [], q16: [], q11_other: [] }, contact: { tryYes: 0, tryNo: 0, quote: 0 } };
+    var out = { n: n, smallSample: n < 30, features: null, order: null, questions: {}, texts: { q12: [], q13: [], q14: [], q17: [], q18: [], q16: [], q11_other: [] }, contact: { tryYes: 0, tryNo: 0, quote: 0 } };
     responses.forEach(function (r) {
       var a = r.answers;
       if (a.q1) { base.q1++; F.forEach(function (f) { var v = a.q1[f.id], o = byId[f.id]; if (v === 'unsure') o.unsure++; else if (typeof v === 'number') o.counts[v - 1]++; }); }
@@ -223,7 +223,7 @@
       qq.options.forEach(function (op) { o.push('- ' + mdText(op.label) + ': ' + op.count + ' (' + p0(op.pct) + ')'); });
     });
     o.push('', '## Early-version interest', '', '- Said yes: ' + stats.contact.tryYes + ', said no: ' + stats.contact.tryNo + '. Emails are in the separate "survey-contact" form.', '- OK to quote anonymously: ' + stats.contact.quote);
-    [['q12', 'The ONE thing they wish a dashboard would tell them'], ['q13', 'Missing features and ideas'], ['q14', 'Apps they loved or hated'], ['q16', 'Anything else they wanted to say'], ['q11_other', 'Other reasons they would stop using an app']].forEach(function (p) {
+    [['q12', 'The ONE thing they wish a dashboard would tell them'], ['q13', 'Missing features and ideas'], ['q14', 'Apps they loved or hated'], ['q17', 'What they did not like about the example screens'], ['q18', 'What they would like to see that is not there'], ['q16', 'Anything else they wanted to say'], ['q11_other', 'Other reasons they would stop using an app']].forEach(function (p) {
       var t = stats.texts[p[0]]; o.push('', '## ' + p[1] + ' (' + t.length + ')', ''); t.forEach(function (x) { o.push('- ' + mdText(x)); });
     });
     return o.join('\n') + '\n';

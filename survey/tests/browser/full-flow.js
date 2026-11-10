@@ -17,10 +17,10 @@ const URL = 'http://localhost:8771/index.html';
   const stored = () => p.evaluate(() => JSON.parse(localStorage.getItem('fs-survey-v1')));
 
   await p.goto(URL);
-  out('intro shows title and Start', /Help design a simple money dashboard/.test(await p.innerText('#app')) && await p.locator('button:has-text("Start")').count() === 1);
+  out('intro shows title and Start', /Help design an easy-to-understand money dashboard/.test(await p.innerText('#app')) && await p.locator('button:has-text("Start")').count() === 1);
   await p.screenshot({ path: OUT + '1-intro.png' });
   await p.click('button:has-text("Start")');
-  out('Q1 grid is first, with progress "1 of 16"', /1 of 16/.test(await p.innerText('#app')) && /Imagine opening a money dashboard/.test(await title()));
+  out('Q1 grid is first, with progress "1 of 18"', /1 of 18/.test(await p.innerText('#app')) && /Imagine opening a money dashboard/.test(await title()));
 
   // validation: cannot continue with nothing rated
   await next();
@@ -136,8 +136,8 @@ const URL = 'http://localhost:8771/index.html';
   await next();                                                                            // -> Q8
   await next(); await next();                                                              // Q9, Q10
   await p.locator('.choice').nth(1).click();                                               // weekly summary
-  await next(); await next(); await next();                                                // Q14, Q16 -> Q15
-  out('last screen: Finish button, 16 of 16', /16 of 16/.test(await p.innerText('#app')) && await p.locator('.nav .primary:has-text("Finish")').count() === 1);
+  await next(); await next(); await next(); await next(); await next(); await next();      // Q14, the example screens, Q17, Q18, Q16 -> Q15
+  out('last screen: Finish button, 18 of 18', /18 of 18/.test(await p.innerText('#app')) && await p.locator('.nav .primary:has-text("Finish")').count() === 1);
   await p.locator('.choice').first().click();                                              // yes
   await next(); out('"Yes" needs a valid email', /valid email/.test(await p.textContent('.error')));
   await p.fill('#email', 'tester@example.com'); await p.locator('.choice').nth(2).click();   // quote OK

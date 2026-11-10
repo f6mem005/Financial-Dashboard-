@@ -6,10 +6,12 @@ const q = (id) => Q.find((x) => x.id === id);
 const C = (...codes) => String.fromCharCode(...codes);   // hostile characters built from numeric codes, never typed raw
 const RLO = C(0x202E), ZWSP = C(0x200B), ZWJ = C(0x200D);
 
-test('content: 16 questions in the intended order, unique ids, ids used by rules exist', () => {
-  assert.equal(Q.length, 16); assert.equal(new Set(Q.map((x) => x.id)).size, 16);
-  // "anything missing?" (q13) sits right after the feature questions; the open "anything else" (q16) is last before the email page (q15)
-  assert.deepEqual(Q.map((x) => x.id), ['q1', 'q2', 'q3', 'q4', 'q11', 'q12', 'q13', 'q5', 'q6', 'q7', 'q8', 'q9', 'q10', 'q14', 'q16', 'q15']);
+test('content: 18 questions plus the example screens, in the intended order, unique ids, ids used by rules exist', () => {
+  assert.equal(Q.length, 19); assert.equal(new Set(Q.map((x) => x.id)).size, 19);
+  assert.equal(Q.filter((x) => x.type !== 'tour').length, 18, 'the example screens are not questions');
+  // "anything missing?" (q13) sits right after the feature questions; the example screens (demo) and the two feedback questions (q17, q18) come after the others;
+  // the open "anything else" (q16) is last before the email page (q15)
+  assert.deepEqual(Q.map((x) => x.id), ['q1', 'q2', 'q3', 'q4', 'q11', 'q12', 'q13', 'q5', 'q6', 'q7', 'q8', 'q9', 'q10', 'q14', 'demo', 'q17', 'q18', 'q16', 'q15']);
   Q.filter((x) => x.type === 'text').forEach((x) => assert.equal(x.max, 2000, x.id));
   assert.equal(q('q16').required, false); assert.equal(q('q13').required, false); assert.equal(q('q12').required, true);
   assert.equal(q('q3').from, 'q2'); assert.equal(q('q2').exact, 3); assert.equal(F.length, 15);
@@ -42,10 +44,10 @@ test('ranking screen appears only after exactly three picks', () => {
   assert.ok(!L.visibleIds(Q, { q2: ['safe', 'bills'] }).includes('q3'));
   assert.ok(!L.visibleIds(Q, {}).includes('q3'));
   assert.ok(L.visibleIds(Q, { q2: ['safe', 'bills', 'goals'] }).includes('q3'));
-  assert.equal(L.visibleIds(Q, {}).length, 15);
-  // progress counts the ranking screen from the start, so "x of 15" never changes mid-survey
-  assert.equal(L.position(Q, {}, 'q1').total, 16);
-  assert.equal(L.position(Q, { q2: ['safe', 'bills', 'goals'] }, 'q3').total, 16);
+  assert.equal(L.visibleIds(Q, {}).length, 18);   // 19 screens, minus the ranking screen that is not shown yet
+  // progress counts the ranking screen from the start, and the example screens never, so "x of 18" never changes mid-survey
+  assert.equal(L.position(Q, {}, 'q1').total, 18);
+  assert.equal(L.position(Q, { q2: ['safe', 'bills', 'goals'] }, 'q3').total, 18);
   assert.equal(L.position(Q, { q2: ['safe', 'bills', 'goals'] }, 'q3').index, 2);
 });
 test('validation: required vs optional', () => {
@@ -328,4 +330,27 @@ test('referrer policy: same-origin in the page, the headers and the post (never 
   assert.match(fs.readFileSync(path.join(root, 'index.html'), 'utf8'), /<meta name="referrer" content="same-origin">/);
   assert.match(fs.readFileSync(path.join(root, '_headers'), 'utf8'), /Referrer-Policy: same-origin/);
   assert.doesNotMatch(fs.readFileSync(path.join(root, 'js', 'config.js'), 'utf8'), /referrerPolicy: 'no-referrer'/);
+});
+
+test('the example screens: no answer, no form field, not counted as a question, and the two feedback questions are saved and sent', () => {
+  const demo = q('demo'); assert.equal(demo.type, 'tour'); assert.equal(demo.required, false);
+  assert.equal(L.validate(demo, {}).ok, true);
+  assert.ok(!L.fieldNames(Q).includes('demo'), 'the example screens have no form field');
+  assert.ok(L.fieldNames(Q).includes('q17') && L.fieldNames(Q).includes('q18'));
+  assert.equal(L.sanitizeAnswers(Q, { demo: 'x', q17: ' the chart is confusing ', q18: 'shared view' }).demo, undefined);
+  const a = L.sanitizeAnswers(Q, { q17: ' the chart is confusing ', q18: 'a shared view' });
+  assert.deepEqual(a, { q17: 'the chart is confusing', q18: 'a shared view' });
+  const f = L.toFields(Q, { meta: { id: 'r1' }, answers: a }); assert.equal(f.q17, 'the chart is confusing'); assert.equal(f.q18, 'a shared view'); assert.ok(!('demo' in f));
+  // "n of N" counts questions only: the screen after q14 is the example screens (still "14 of 18"), then q17 is "15 of 18"
+  const ans = { q2: ['safe', 'bills', 'goals'] };
+  assert.equal(L.position(Q, ans, 'q14').index, 13); assert.equal(L.position(Q, ans, 'demo').index, 13); assert.equal(L.position(Q, ans, 'q17').index, 14);
+  assert.equal(L.position(Q, ans, 'q15').index, 17); assert.equal(L.position(Q, ans, 'q15').total, 18);
+  assert.equal(SV.tour.length, 5); SV.tour.forEach((s) => { assert.ok(s.title && s.caption && s.screen.length >= 3, s.id); });
+});
+test('intro: easy-to-understand (not "simple"), "you" not "people", the number of questions instead of a time, and no age', () => {
+  const text = [SV.intro.title, SV.intro.lead, ...SV.intro.points].join(' ');
+  assert.match(SV.intro.title, /easy-to-understand money dashboard/); assert.doesNotMatch(text, /\bsimple\b/i);
+  assert.match(SV.intro.lead, /help you see your money clearly/); assert.doesNotMatch(SV.intro.lead, /\bpeople\b|\bthey\b|\btheir\b/i);
+  assert.match(SV.intro.points[0], new RegExp('There are ' + Q.filter((x) => x.type !== 'tour').length + ' questions'));
+  assert.doesNotMatch(text, /minutes?\b|\bmins?\b|hours?\b|\b18\b(?! questions)|\b30\b|age\b|years old|adults?\b/i, 'no time to finish, no age (the question count itself is fine)');
 });

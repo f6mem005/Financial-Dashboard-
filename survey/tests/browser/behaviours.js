@@ -13,7 +13,7 @@ const URL = 'http://localhost:8771/index.html';
   const full = () => { const o = {}; ['safe','where','leaks','bills','forecast','whatif','alerts','goals','debt','subs','yearly','lowmonth','terms','shared','invest'].forEach((id, i) => { o[id] = (i % 5) + 1; }); return o; };
   const seed = (p, over, tOffset) => p.evaluate(([KEY, over, tOffset, full]) => localStorage.setItem(KEY, JSON.stringify(Object.assign({ v: 1, t: Date.now() + tOffset, started: true, qid: 'q5', seed: 7, rid: 'abcdef0123456789abcdef01',
     answers: { q1: full, q2: ['safe', 'bills', 'goals'], q3: ['bills', 'safe', 'goals'], q7: ['type'], q12: 'hello there' } }, over))), [KEY, over || {}, tOffset || 0, full()]);
-  const count = async (p) => /(\d+) of 16/.exec(await p.innerText('.progress-top'))[1];
+  const count = async (p) => /(\d+) of 18/.exec(await p.innerText('.progress-top'))[1];
 
   // ---- double-tap on Next must not skip a screen ----
   let { ctx, p } = await mk(); await p.goto(URL); await seed(p, {}); await p.reload();
@@ -32,7 +32,7 @@ const URL = 'http://localhost:8771/index.html';
   await p.dblclick('.nav .primary'); await p.click('.nav .primary', { force: true, timeout: 500 }).catch(() => {});
   await p.waitForTimeout(100);
   out('button shows Sending... and is disabled', await p.locator('.nav .primary:has-text("Sending")').count() === 1 && await p.locator('.nav .primary').isDisabled());
-  out('Back is ignored while sending', await (async () => { await p.click('.nav .ghost', { force: true }).catch(() => {}); return /16 of 16/.test(await p.innerText('.progress-top')); })());
+  out('Back is ignored while sending', await (async () => { await p.click('.nav .ghost', { force: true }).catch(() => {}); return /18 of 18/.test(await p.innerText('.progress-top')); })());
   await p.waitForSelector('text=Thank you');
   const sends = await p.evaluate(() => window.__sends);
   out('send was called exactly once', sends.length === 1);
@@ -54,7 +54,7 @@ const URL = 'http://localhost:8771/index.html';
   await p.evaluate(([KEY]) => localStorage.setItem(KEY, JSON.stringify({ v: 1, t: Date.now(), started: true, qid: 'q15', seed: 1, answers: {} })), [KEY]); await p.reload();
   await p.evaluate(() => { window.__sends = 0; SV.config.send = () => { window.__sends++; return Promise.resolve(); }; });
   await p.click('.nav .primary');
-  out('empty response is NOT sent; respondent returned to question 1', await p.evaluate(() => window.__sends) === 0 && /1 of 16/.test(await p.innerText('.progress-top')));
+  out('empty response is NOT sent; respondent returned to question 1', await p.evaluate(() => window.__sends) === 0 && /1 of 18/.test(await p.innerText('.progress-top')));
   out('and told what is missing', /rows still need a rating/.test(await p.textContent('.error')));
   await ctx.close();
 
@@ -92,7 +92,7 @@ const URL = 'http://localhost:8771/index.html';
   const ctxA = await b.newContext({ viewport: { width: 390, height: 844 } }); const A = await ctxA.newPage(); const B = await ctxA.newPage();
   A.on('pageerror', e => errs.push(e.message)); B.on('pageerror', e => errs.push(e.message));
   await A.goto(URL); await seed(A, { qid: 'q15' }); await A.reload(); await B.goto(URL);
-  out('both windows open on the saved progress', /16 of 16/.test(await A.innerText('.progress-top')) && /16 of 16/.test(await B.innerText('.progress-top')));
+  out('both windows open on the saved progress', /18 of 18/.test(await A.innerText('.progress-top')) && /18 of 18/.test(await B.innerText('.progress-top')));
   await A.click('.nav .primary'); await A.waitForSelector('text=Thank you');
   await B.waitForTimeout(250);
   out('the other window resets itself to the intro', await B.locator('button:has-text("Start")').count() === 1);
@@ -106,7 +106,7 @@ const URL = 'http://localhost:8771/index.html';
   out('first tap only asks for confirmation (answers still saved)', /Tap again to erase/.test(await p.innerText('#app')) && (await p.evaluate(([KEY]) => !!JSON.parse(localStorage.getItem(KEY)).answers.q12, [KEY])));
   await p.waitForTimeout(700);                      // a deliberate second tap, not a double-tap
   await p.click('button:has-text("Tap again to erase")');
-  out('second tap erases and starts at question 1', /1 of 16/.test(await p.innerText('.progress-top')) && (await p.evaluate(([KEY]) => JSON.stringify(JSON.parse(localStorage.getItem(KEY)).answers), [KEY])) === '{}');
+  out('second tap erases and starts at question 1', /1 of 18/.test(await p.innerText('.progress-top')) && (await p.evaluate(([KEY]) => JSON.stringify(JSON.parse(localStorage.getItem(KEY)).answers), [KEY])) === '{}');
   await ctx.close();
 
   // ---- hostile text ends up clean in the downloaded file ----
@@ -139,7 +139,7 @@ const URL = 'http://localhost:8771/index.html';
   await p.waitForTimeout(100); await p.locator('button:has-text("Tap again to erase")').click();
   out('a second tap 100ms later is still ignored', (await p.evaluate(([KEY]) => !!JSON.parse(localStorage.getItem(KEY)).answers.q12, [KEY])));
   await p.waitForTimeout(700); await p.locator('button:has-text("Tap again to erase")').click();
-  out('a deliberate tap after 700ms erases', /1 of 16/.test(await p.innerText('.progress-top')));
+  out('a deliberate tap after 700ms erases', /1 of 18/.test(await p.innerText('.progress-top')));
   await ctx.close();
   ({ ctx, p } = await mk()); await p.clock.install(); await p.goto(URL); await seed(p, { started: false }); await p.reload();
   await p.locator('button:has-text("Start over")').click(); await p.clock.fastForward(6000);
@@ -166,7 +166,7 @@ const URL = 'http://localhost:8771/index.html';
   ({ ctx, p } = await mk()); await p.goto(URL); await seed(p, { qid: 'q15' }); await p.reload();
   await p.evaluate(() => { SV.config.send = () => { throw new Error('boom'); }; });
   await p.locator('.nav .primary').click(); await p.waitForSelector('text=did not send');
-  out('a send that throws shows the error and keeps the answers', await p.locator('.nav .primary').isEnabled() && /16 of 16/.test(await p.innerText('.progress-top')));
+  out('a send that throws shows the error and keeps the answers', await p.locator('.nav .primary').isEnabled() && /18 of 18/.test(await p.innerText('.progress-top')));
   await ctx.close();
 
   // ---- a wall-clock jump backwards must not lock navigation ----

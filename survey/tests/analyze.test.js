@@ -184,8 +184,8 @@ test('bases are stated, and thin ones are flagged', () => {
 test('the analysis depends on these question ids and types; renaming one must fail here', () => {
   const t = (id) => Q.find((x) => x.id === id).type;
   assert.deepEqual(['q1', 'q2', 'q3', 'q4', 'q15'].map(t), ['grid', 'pick', 'rank', 'single', 'contact']);
-  ['q12', 'q13', 'q14', 'q16'].forEach((id) => assert.equal(t(id), 'text')); assert.equal(Q.find((x) => x.id === 'q11').otherText, true);
-  assert.deepEqual(Object.keys(A.aggregate([]).texts).sort(), ['q11_other', 'q12', 'q13', 'q14', 'q16']);
+  ['q12', 'q13', 'q14', 'q16', 'q17', 'q18'].forEach((id) => assert.equal(t(id), 'text')); assert.equal(Q.find((x) => x.id === 'q11').otherText, true);
+  assert.deepEqual(Object.keys(A.aggregate([]).texts).sort(), ['q11_other', 'q12', 'q13', 'q14', 'q16', 'q17', 'q18']);
 });
 test('command line: prints the report; refuses to overwrite its input, bad options, non-files; writes Excel-ready owner-only files', () => {
   const dir = fsx.mkdtempSync(pth.join(os.tmpdir(), 'cli-test-')), cli = pth.join(__dirname, '..', 'results', 'analyze-cli.js'), inp = pth.join(dir, 'in.csv');
@@ -271,4 +271,12 @@ test('timestamps in a JSON export follow the same rule: the first readable one w
     { created_at: '2024-05-01T00:00:00Z', data: { response_id: 'jsn-00001', q5: 'weekly' } }];
   const r = A.analyze(JSON.stringify(rows));
   assert.equal(r.responses.length, 1); assert.equal(r.info.undatedDupes, 0); assert.equal(r.responses[0].answers.q5, 'weekly');   // the 05-01 copy is earlier
+});
+
+test('the two feedback questions (q17, q18) reach the report, in the respondents\' words', () => {
+  const csv = 'response_id,q12,q17,q18\nr1,a wish,the chart is confusing,a shared view\nr2,another wish,,more goals\n';
+  const r = A.analyze(csv), md = A.toMarkdown(r.stats, r.info);
+  assert.deepEqual(r.stats.texts.q17, ['the chart is confusing']); assert.deepEqual(r.stats.texts.q18.sort(), ['a shared view', 'more goals']);
+  assert.match(md, /What they did not like about the example screens \(1\)/); assert.match(md, /What they would like to see that is not there \(2\)/);
+  assert.match(md, /the chart is confusing/);
 });

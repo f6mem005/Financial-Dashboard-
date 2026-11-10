@@ -86,7 +86,7 @@
         })));
     });
   }
-  var TEXTS = [['q12', 'The ONE thing they wish a dashboard would tell them'], ['q13', 'Missing features and ideas'], ['q14', 'Apps they loved or hated'], ['q16', 'Anything else they wanted to say'], ['q11_other', 'Other reasons they would stop using an app']];
+  var TEXTS = [['q12', 'The ONE thing they wish a dashboard would tell them'], ['q13', 'Missing features and ideas'], ['q14', 'Apps they loved or hated'], ['q17', 'What they did not like about the example screens'], ['q18', 'What they would like to see that is not there'], ['q16', 'Anything else they wanted to say'], ['q11_other', 'Other reasons they would stop using an app']];
   function openText(d) {
     var listBox = h('div');
     function draw() { // only the lists are rebuilt while typing; the search box itself is never replaced
