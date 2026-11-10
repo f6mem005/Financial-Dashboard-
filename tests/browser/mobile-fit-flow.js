@@ -75,10 +75,10 @@ const probe = () => {
 
   // ---- the page cannot be dragged sideways, and sticky bars still stick (overflow rules can break sticky)
   let ctx = await b.newContext({ viewport: { width: 390, height: 560 }, isMobile: true, hasTouch: true }); let p = await ctx.newPage(); await p.goto(URL);
-  await p.evaluate(() => { const d = document.createElement('div'); d.id = 'wide-probe'; d.style.cssText = 'width:900px;height:10px'; document.body.appendChild(d); window.scrollTo(120, 0); });
+  await p.evaluate(() => { const d = document.createElement('div'); d.id = 'wide-probe'; d.style.cssText = 'width:900px;height:10px'; document.getElementById('app').appendChild(d); window.scrollTo(120, 0); });
   out('even with something 900px wide on the page, a sideways scroll leaves the page where it was', (await p.evaluate(() => window.scrollX)) === 0); await p.evaluate(() => document.getElementById('wide-probe').remove());
-  const cs = await p.evaluate(() => [getComputedStyle(document.documentElement).overflowX, getComputedStyle(document.body).overflowX]);
-  out('the page is set not to scroll sideways (html hidden, body clip so sticky still works)', cs[0] === 'hidden' && cs[1] === 'clip');
+  const cs = await p.evaluate(() => [getComputedStyle(document.documentElement).overflowX, getComputedStyle(document.body).overflowX, getComputedStyle(document.getElementById('app')).overflowX]);
+  out('the sideways guard is on the app container (clip), and NOT on html or body (overflow on the page root can strand fixed bars on very tall pages in iPhone Safari)', cs[0] === 'visible' && cs[1] === 'visible' && cs[2] === 'clip');
   await p.click('button:has-text("Get started")'); await p.evaluate(() => window.FD.app.goStep(3)); await p.waitForTimeout(250);
   const tall = await p.evaluate(() => document.documentElement.scrollHeight > window.innerHeight + 50);
   await p.evaluate(() => window.scrollTo(0, 0)); await p.waitForTimeout(100);
@@ -93,5 +93,18 @@ const probe = () => {
   const covered = await p.evaluate(() => { window.scrollTo(0, document.documentElement.scrollHeight); const last = [...document.querySelectorAll('main > *, main')].pop(); const d = document.querySelector('.disclaimer').getBoundingClientRect(), t = document.querySelector('.tabs').getBoundingClientRect(); return d.bottom > t.top + 1; });
   out('scrolled to the very bottom, the last line is not hidden behind the tab bar', !covered);
   await ctx.close();
+  // ---- the longest screen (Ideas): the tab bar stays flush with the bottom of the screen at the top, middle and bottom of the page, and there are two ways home
+  for (const [w, h] of [[375, 667], [390, 844], [320, 568]]) {
+    ctx = await b.newContext({ viewport: { width: w, height: h }, isMobile: true, hasTouch: true }); await mockSession(ctx); p = await ctx.newPage(); await p.addInitScript(`localStorage.setItem('fd.v1', ${JSON.stringify(JSON.stringify(big))})`); await p.goto(URL);
+    await p.evaluate(() => window.FD.app.go('ideas')); await p.waitForTimeout(300);
+    const tall = await p.evaluate(() => document.documentElement.scrollHeight > window.innerHeight * 2);
+    const bar = () => p.evaluate(() => { const t = document.querySelector('.tabs').getBoundingClientRect(), el = document.elementFromPoint(t.left + t.width / 12, t.top + t.height / 2); return Math.abs(t.bottom - window.innerHeight) <= 1 && t.width === document.documentElement.clientWidth && !!el && !!el.closest('.tab'); });
+    const marks = []; for (const y of [0, 0.5, 1]) { await p.evaluate((y) => window.scrollTo(0, (document.documentElement.scrollHeight - window.innerHeight) * y), y); await p.waitForTimeout(120); marks.push(await bar()); }
+    out(w + 'x' + h + ': on the long Ideas page the tab bar is on the bottom edge and tappable at the top, middle and bottom of the page', tall && marks.every(Boolean));
+    await p.tap('.tab:has-text("Home")'); await p.waitForTimeout(250); out(w + 'x' + h + ': tapping Home in the tab bar goes home', /^Home/.test((await p.textContent('h1')).trim()));
+    await p.evaluate(() => window.FD.app.go('ideas')); await p.waitForTimeout(250); await p.evaluate(() => window.scrollTo(0, 0));
+    await p.tap('header.site-banner .brand-btn'); await p.waitForTimeout(250); out(w + 'x' + h + ': tapping the logo and name at the top also goes home', /^Home/.test((await p.textContent('h1')).trim()));
+    await ctx.close();
+  }
   await b.close(); console.log(failed ? failed + ' FAILED' : 'ALL PASSED'); process.exit(failed ? 1 : 0);
 })();

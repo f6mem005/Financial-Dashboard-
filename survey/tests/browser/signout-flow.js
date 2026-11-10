@@ -26,7 +26,7 @@ let failed = 0; const out = (k, v) => { if (!v) failed++; console.log((v ? 'PASS
   await p.click('button:has-text("Start")'); await p.waitForTimeout(400);
   out('...and on the question screens too', (await signouts(p)) === 1 && (await p.locator('header.banner button:has-text("Sign out")').count()) === 1);
   await Promise.all([p.waitForNavigation(), p.click('header.banner button:has-text("Sign out")')]);
-  out('pressing it signs out once (POST to /auth/logout) and goes back to the start address', p.posts.join() === 'POST'); await p.ctx.close();
+  out('pressing it signs out once (POST to /auth/logout) and goes back to the start address', p.posts.join() === 'POST' && !/#/.test(p.url()) && /^http:\/\/localhost:8771\/(index\.html)?$/.test(p.url())); await p.ctx.close();
 
   // ---- the admin
   p = await open({}, { role: 'admin' }); await p.waitForSelector('button:has-text("Sign out")'); out('the admin sees it too, labelled for the admin', /signed in as the admin/.test(await p.getAttribute('button:has-text("Sign out")', 'aria-label'))); await p.ctx.close();
@@ -55,7 +55,17 @@ let failed = 0; const out = (k, v) => { if (!v) failed++; console.log((v ? 'PASS
   await p.evaluate(() => localStorage.setItem('fs-survey-v1', JSON.stringify({ v: 1, t: Date.now(), rid: 'abcd1234', started: true, qid: 'q12', seed: 1, answers: {} }))); await p.reload(); await p.waitForSelector('textarea');
   await p.fill('textarea', 'a half-typed thought'); await p.waitForSelector('button:has-text("Sign out")');
   await Promise.all([p.waitForNavigation(), p.click('header.banner button:has-text("Sign out")')]);
-  out('signing out part-way through keeps the half-typed answer', (await p.evaluate(() => { const s = JSON.parse(localStorage.getItem('fs-survey-v1') || '{}'); return s.answers && s.answers.q12; })) === 'a half-typed thought'); await p.ctx.close();
+  out('signing out part-way through leaves the saved, half-typed answer in place', (await p.evaluate(() => { const s = JSON.parse(localStorage.getItem('fs-survey-v1') || '{}'); return s.answers && s.answers.q12; })) === 'a half-typed thought'); await p.ctx.close();
+
+  // ---- never in the middle of sending the answers (that could send them twice); keyboard focus survives a failed sign-out
+  p = await open({}, { role: 'person', name: 'Ana' }); await p.waitForSelector('button:has-text("Sign out")');
+  await p.evaluate(() => { window.SV.busy = () => true; window.SV.session.refresh(); });
+  out('while the answers are being sent, the Sign out button is disabled', await p.locator('button:has-text("Sign out")').isDisabled());
+  await p.evaluate(() => window.SV.session.signOut()); await p.waitForTimeout(300); out('...and signing out then sends no request', p.posts.length === 0);
+  await p.evaluate(() => { window.SV.busy = () => false; window.SV.session.refresh(); }); out('...and it works again afterwards', await p.locator('button:has-text("Sign out")').isEnabled()); await p.ctx.close();
+  p = await open({}, { role: 'person', name: 'Ana' }); await p.unroute('**/auth/logout'); await p.route('**/auth/logout', (r) => r.fulfill({ status: 503, contentType: 'application/json', body: '{"error":"x"}' }));
+  await p.waitForSelector('button:has-text("Sign out")'); await p.focus('button:has-text("Sign out")'); await p.keyboard.press('Enter'); await p.waitForSelector('.so-fail', { timeout: 3000 });
+  out('after a failed sign-out by keyboard, focus is still on the Sign out button', await p.evaluate(() => !!document.activeElement && /Sign out/.test(document.activeElement.textContent))); await p.ctx.close();
 
   // ---- the answer fails once, then the tab comes back: the button appears; a plain 401 is not retried
   { const ctx = await b.newContext({ viewport: { width: 390, height: 844 } }); p = await ctx.newPage(); let calls = 0;

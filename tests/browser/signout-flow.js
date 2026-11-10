@@ -40,6 +40,12 @@ const SEED = `if (!sessionStorage.getItem('s')) { localStorage.setItem('fd.v1', 
   out('on Settings there are exactly two Sign out buttons: the top bar and the Signed in card', (await signouts(p)) === 2);
   await p.ctx.close();
 
+  // ---- the logo and name in the top bar are a Home button on the main screens (not on the setup screens)
+  p = await open({}, { role: 'person', name: 'Ana' }, true); await p.waitForSelector('header.site-banner .brand-btn'); await p.evaluate(() => window.FD.app.go('settings')); await p.waitForTimeout(200);
+  out('the logo and name are a Home button with a spoken name', (await p.getAttribute('.brand-btn', 'aria-label')) === 'Finance Sense. Go to Home');
+  await p.click('.brand-btn'); await p.waitForTimeout(200); out('...and it goes to Home from Settings', /^Home/.test((await p.textContent('h1')).trim())); await p.ctx.close();
+  p = await open({}, { role: 'person', name: 'Ana' }); await p.click('button:has-text("Get started")'); await p.waitForTimeout(250); out('on the setup questions the logo is plain (Home is a separate button there)', (await p.locator('.brand-btn').count()) === 0); await p.ctx.close();
+
   // ---- the admin: the card also offers the admin tools
   p = await open({}, { role: 'admin' }, true); await p.waitForSelector('header.site-banner button:has-text("Sign out")'); await p.evaluate(() => window.FD.app.go('settings')); await p.waitForTimeout(250);
   out('the admin sees Sign out and an Admin tools button, and the card says it is the admin', /signed in as the admin/.test(await p.innerText('main')) && (await p.locator('button:has-text("Admin tools")').count()) === 1); await p.ctx.close();
@@ -97,6 +103,16 @@ const SEED = `if (!sessionStorage.getItem('s')) { localStorage.setItem('fd.v1', 
     await p.ctx.close();
   }
 
+  // ---- keyboard users: focus stays on the button when a sign-out fails, and the first screen does not jump when the sign-in answer arrives
+  p = await open({}, { role: 'person', name: 'Ana' }, true); await p.unroute('**/auth/logout'); await p.route('**/auth/logout', (r) => r.fulfill({ status: 503, contentType: 'application/json', body: '{"error":"x"}' }));
+  await p.waitForSelector('header.site-banner button:has-text("Sign out")'); await p.focus('header.site-banner button:has-text("Sign out")'); await p.keyboard.press('Enter'); await p.waitForSelector('#toast.show', { timeout: 3000 });
+  out('after a failed sign-out by keyboard, focus is still on the Sign out button (not lost to the page)', await p.evaluate(() => !!document.activeElement && /Sign out/.test(document.activeElement.textContent))); await p.ctx.close();
+  { const ctx = await b.newContext({ viewport: { width: 375, height: 667 }, isMobile: true, hasTouch: true }); p = await ctx.newPage();
+    await p.route('**/auth/session', async (r) => { await new Promise((x) => setTimeout(x, 700)); r.fulfill({ contentType: 'application/json', body: '{"role":"person","name":"Ana"}' }); });
+    await p.goto(URL); await p.waitForTimeout(150); const top1 = await p.evaluate(() => Math.round(document.querySelector('.brand-row').getBoundingClientRect().top));
+    await p.waitForSelector('button:has-text("Sign out")', { timeout: 4000 }); const top2 = await p.evaluate(() => Math.round(document.querySelector('.brand-row').getBoundingClientRect().top));
+    out('the first screen does not jump when the sign-in answer arrives (space for the button is kept from the start)', top1 === top2); await ctx.close(); }
+
   // ---- a hostile name is only ever text
   p = await open({}, { role: 'person', name: '<img src=x onerror=alert(1)> Ana' }, true); await p.waitForSelector('header.site-banner button:has-text("Sign out")'); await p.evaluate(() => window.FD.app.go('settings')); await p.waitForTimeout(250);
   out('a name with markup in it is shown as plain text, never run', (await p.locator('main img').count()) === 0 && /<img src=x/.test(await p.innerText('main')) && p.errs.length === 0); await p.ctx.close();
@@ -106,7 +122,7 @@ const SEED = `if (!sessionStorage.getItem('s')) { localStorage.setItem('fd.v1', 
     p = await open({ viewport: { width: w, height: 760 }, isMobile: true, hasTouch: true }, { role: 'person', name: 'Ana' }, true); await p.waitForSelector('header.site-banner button:has-text("Sign out")');
     const fit = async () => p.evaluate(() => { const iw = document.documentElement.clientWidth, bad = []; document.querySelectorAll('.topbar *, .session-slot *').forEach((e) => { const r = e.getBoundingClientRect(); if (r.width && (r.right > iw + 1 || r.left < -1)) bad.push(e.className || e.tagName); }); const bar = document.querySelector('.topbar').getBoundingClientRect(); return { bad: bad.slice(0, 3), h: Math.round(bar.height), btnH: Math.max.apply(null, [...document.querySelectorAll('.banner-actions .btn')].map((e) => Math.round(e.getBoundingClientRect().height))) }; });
     let r = await fit(); const oneRow = w >= 360;   // below 360px the buttons drop to their own row instead of squeezing
-    out(w + 'px: the top bar with How it works and Sign out fits on the screen' + (oneRow ? ' on one row' : '') + ' (height ' + r.h + 'px)', r.bad.length === 0 && r.h <= (oneRow ? 66 : 100) && r.btnH <= 48);
+    out(w + 'px: the top bar with How it works and Sign out fits on the screen' + (oneRow ? ' on one row' : '') + ' (height ' + r.h + 'px)', r.bad.length === 0 && r.h <= (oneRow ? 66 : 112) && r.btnH <= 48);
     await p.evaluate(() => window.FD.app.go('settings')); await p.waitForTimeout(200); r = await fit(); out(w + 'px: ...and on Settings', r.bad.length === 0);
     await p.evaluate(() => window.FD.app.ui.how = true); await p.evaluate(() => window.FD.app.render(true)); await p.waitForTimeout(150);
     out(w + 'px: the in-app How it works screen has no sideways overflow', await p.evaluate(() => document.body.scrollWidth <= document.documentElement.clientWidth));

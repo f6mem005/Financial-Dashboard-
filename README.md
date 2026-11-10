@@ -45,6 +45,12 @@ How it holds together:
 After a deploy, check from outside: `curl -sI <site>/` shows 401 and exactly one `content-security-policy` header;
 `curl -s --path-as-is -o /dev/null -w '%{http_code}' '<site>/auth/..%2findex.html'` is 401; and an unsigned `POST /` is refused.
 
+## Getting around on a phone
+
+The bottom tab bar is `position: fixed`. The logo and name in the top bar of every main screen are also a **Home** button, so there is always a way back even if the tab bar is out of sight.
+The page's sideways guard (`overflow-x: clip`) sits on the app container `#app`, never on `html` or `body` (overflow on the page root can strand fixed bars on very tall pages in iPhone Safari and
+home-screen apps). `tests/browser/mobile-fit-flow.js` checks the tab bar on the longest screen (Ideas) at the top, middle and bottom of the page.
+
 ## Signing out (everyone)
 
 Anyone who is signed in sees a **Sign out** button: in the top bar of every screen, as a link on the first screen, and in a **Signed in** card at the top of Settings (which also shows who is signed in, and an

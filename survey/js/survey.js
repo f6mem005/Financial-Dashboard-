@@ -359,6 +359,7 @@
     var b = mount.querySelector('.nav .primary');
     if (b) { b.disabled = on; b.textContent = on ? 'Sending...' : 'Finish'; }
     var s = mount.querySelector('.skip-email'); if (s) s.disabled = on;
+    if (SV.session) SV.session.refresh();   // Sign out is disabled while sending
     // nothing may be edited while a send is running: what was captured is what goes out, so a late change would be silently lost
     Array.prototype.forEach.call(mount.querySelectorAll('input, textarea, select, .choice, .nav .ghost'), function (el) {
       if (on) { if (!el.disabled) { el.disabled = true; el._busyLocked = true; } }
@@ -412,7 +413,7 @@
     state = fresh(); render(true); say('This survey was changed in another window, so this page was reset.'); // otherwise typing here would re-save the finished answers
   });
 
-  SV.flush = function () { if (!state.done && !state.sending && state.started) save(); };   // used by Sign out so nothing typed is lost
+  SV.busy = function () { return !!state.sending; };   // Sign out is disabled while the answers are being sent
   if (SV.session) SV.session.load();   // who is signed in, so the banner can show Sign out
   render(false);
 })(typeof window !== 'undefined' ? window : globalThis);

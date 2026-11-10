@@ -62,9 +62,10 @@
       h('path', { d: 'M7 21 L13 14 L18 18 L25 9', class: 'logo-line' }),
       h('path', { d: 'M20 9 L25 9 L25 14', class: 'logo-line' }));
   }
-  function banner(actions) {
+  function banner(actions, onHome) {   // onHome: the logo and name become a Home button (so there is always a way back, even if the tab bar is out of sight)
+    var brand = h('div', { class: 'brand-row' }, logo(30), h('span', { class: 'brand' }, 'Finance Sense'));
     return h('header', { class: 'topbar site-banner' },
-      h('div', { class: 'brand-row' }, logo(30), h('span', { class: 'brand' }, 'Finance Sense')),
+      onHome ? h('button', { type: 'button', class: 'brand-btn', onclick: onHome, 'aria-label': 'Finance Sense. Go to Home' }, brand) : brand,
       h('div', { class: 'banner-actions' }, actions || null, FD.session ? FD.session.slot('bar') : null));   // Sign out shows here for anyone who is signed in
   }
 

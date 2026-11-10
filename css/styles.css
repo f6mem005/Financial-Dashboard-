@@ -19,9 +19,12 @@
   }
 }
 * { box-sizing: border-box; }
-html { -webkit-text-size-adjust: 100%; overflow-x: hidden; }   /* a phone page must never drag sideways, even if some box is too wide */
-body { margin: 0; overflow-x: clip; background: var(--bg); color: var(--text); font: 16px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
 h1, h2, h3, p, ul, ol { margin: 0; }
+/* A phone page must never drag sideways, even if some box is too wide. The guard sits on the app container, NOT on html or body: overflow on the page root can strand
+   position: fixed bars (the tab bar) on very tall pages in iPhone Safari and home-screen apps. clip (unlike hidden) is not a scroller, so sticky bars keep working. */
+#app { overflow-x: clip; }
 ul, ol { padding: 0; list-style: none; }
 button, input, select { font: inherit; color: inherit; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
@@ -357,3 +360,8 @@ html { scroll-padding-bottom: 7rem; }   /* a focused control is never left under
   .site-banner .brand { font-size: .95rem; } .site-banner .logo { width: 26px; height: 26px; } .site-banner .brand-row { gap: 6px; }
   .banner-actions { gap: 4px; } .banner-actions .btn.small { min-height: 40px; padding: 4px 8px; font-size: .82rem; }
 }
+
+/* the logo and name as a Home button */
+.brand-btn { background: none; border: 0; padding: 0; margin: 0; color: inherit; font: inherit; text-align: left; cursor: pointer; border-radius: 8px; min-height: 44px; display: flex; align-items: center; }
+/* the first screen's Sign out slot keeps its height from the start, so the screen does not jump down when the sign-in answer arrives */
+.session-hero:empty { display: block; min-height: 36px; }

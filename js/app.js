@@ -240,7 +240,7 @@
     var nav = h('nav', { class: 'tabs', 'aria-label': 'Main' }, TABS.map(function (t) {
       return h('button', { type: 'button', class: 'tab' + (app.ui.tab === t[0] ? ' on' : ''), 'aria-current': app.ui.tab === t[0] ? 'page' : null, onclick: function () { app.go(t[0]); } }, icon(t[2]), h('span', null, t[1]));
     }));
-    return h('div', { class: 'shell' }, banner, UI.banner(UI.btn('How it works', function () { app.ui.how = true; app.render(true); }, 'small ghost how-btn')), content, disclaimer(), nav);
+    return h('div', { class: 'shell' }, banner, UI.banner(UI.btn('How it works', function () { app.ui.how = true; app.render(true); }, 'small ghost how-btn'), function () { app.go('home'); }), content, disclaimer(), nav);
   }
 
   // Another tab changed the data: reload it instead of overwriting it on our next save.

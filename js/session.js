@@ -27,6 +27,7 @@
     return UI.btn(text, signOut, 'small ghost signout-btn', { 'aria-label': aria });
   }
   function fill(slot) {
+    var hadFocus = !!(root.document && root.document.activeElement && slot.el.contains(root.document.activeElement));   // a redraw must not drop a keyboard user's focus
     slot.el.textContent = '';
     if (!info) return;
     if (slot.kind === 'card') {
@@ -38,6 +39,7 @@
         h('p', { class: 'hint' }, FD.app && FD.app.S && FD.app.S.mode === 'demo' ? 'The demo numbers are not saved anywhere, so there is nothing to remove from this browser.'
           : 'Signing out does not remove your numbers from this browser. If other people use this browser, delete your data first (see Your data below).'))));
     } else slot.el.appendChild(button(slot.kind));
+    if (hadFocus) { var again = slot.el.querySelector('button'); if (again && again.focus) again.focus({ preventScroll: true }); }
   }
   function refresh() {
     slots = slots.filter(alive);

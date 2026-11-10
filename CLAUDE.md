@@ -63,6 +63,8 @@ GitHub, so a push does not deploy. If that ever changes, a push could publish, s
   Never read a file's contents any other way, and keep the PBKDF2 iteration bounds.
 - Phone fit: nothing may be wider than the screen, or the page can be dragged sideways and looks like it is floating. `tests/browser/mobile-fit-flow.js` checks every screen at 320, 360, 390 and 430px
   (and that sticky bars still stick), so run it after any CSS or layout change. A flex or grid child that holds an input or a long word needs `min-width: 0`.
+  **Never put `overflow` (hidden, clip, auto) on `html` or `body`**: on iPhone Safari and home-screen apps it can strand `position: fixed` bars (the tab bar vanished on the very tall Ideas page).
+  The sideways guard lives on `#app` (`overflow-x: clip`), which is not a scroller. The logo and name in the top bar are a Home button, so there is always a way back.
 - Pop-ups: today the only pop-ups are the browser's own confirm boxes, which already block the page behind them. If a custom pop-up, sheet or menu is ever added, it must lock the page behind it
   (`overflow: hidden` on `html` while open, `overscroll-behavior: contain` on the pop-up's own scroller), keep keyboard focus inside, close on Escape, restore focus when it closes,
   and have a browser test (touch-emulated) proving that scrolling moves the pop-up and not the page behind it.
