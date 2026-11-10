@@ -104,6 +104,14 @@ const probe = () => {
       return placed && !!el && !!el.closest('.tab'); });
     const marks = []; for (const y of [0, 0.5, 1]) { await p.evaluate((y) => window.scrollTo(0, (document.documentElement.scrollHeight - window.innerHeight) * y), y); await p.waitForTimeout(120); marks.push(await bar()); }
     out(w + 'x' + h + ': on the long Ideas page the tab bar is on screen and tappable at the top, middle and bottom of the page', tall && marks.every(Boolean));
+    if (w >= 720) {   // the "new version" bar must not cover the tab bar (both stick to the top)
+      await p.evaluate(() => { window.FD.update.show('new'); window.scrollTo(0, 1200); }); await p.waitForTimeout(250);
+      const covered = await p.evaluate(() => { const t = document.querySelector('.tabs').getBoundingClientRect(), u = document.getElementById('update-bar').getBoundingClientRect(), el = document.elementFromPoint(t.left + t.width / 12, t.top + t.height / 2);
+        return { tabsBelowUpdate: t.top >= u.bottom - 1, tappable: !!el && !!el.closest('.tab') }; });
+      out(w + 'x' + h + ': with the "new version" bar showing, the tab bar sits just under it and is still tappable', covered.tabsBelowUpdate && covered.tappable);
+      await p.evaluate(() => { window.FD.update.hide(); window.scrollTo(0, 0); }); await p.waitForTimeout(150);
+      out(w + 'x' + h + ': and when the bar goes away the tab bar goes back to the top edge', await p.evaluate(() => document.querySelector('.tabs').getBoundingClientRect().top <= 1 || getComputedStyle(document.documentElement).getPropertyValue('--update-h') === ''));
+    }
     await p.tap('.tab:has-text("Home")'); await p.waitForTimeout(250); out(w + 'x' + h + ': tapping Home in the tab bar goes home', /^Home/.test((await p.textContent('h1')).trim()));
     await p.evaluate(() => window.FD.app.go('ideas')); await p.waitForTimeout(250); await p.evaluate(() => window.scrollTo(0, 0));
     await p.tap('header.site-banner .brand-btn'); await p.waitForTimeout(250); out(w + 'x' + h + ': tapping the logo and name at the top also goes home', /^Home/.test((await p.textContent('h1')).trim()));

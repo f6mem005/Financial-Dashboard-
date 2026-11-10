@@ -6,7 +6,7 @@
 (function (root) {
   'use strict';
   var FD = (root.FD = root.FD || {});
-  var INTERVAL_MS = 5 * 60 * 1000, shown = null, bar = null, timer = null;
+  var INTERVAL_MS = 5 * 60 * 1000, shown = null, bar = null, timer = null, resizeWired = false;
   var MESSAGES = {
     'new': 'A new version of Finance Sense is available. Refresh to get it. Your numbers stay on this device.',
     signin: 'You have been signed out. Refresh to sign in again. Your numbers stay on this device.'
@@ -41,9 +41,12 @@
       h('button', { type: 'button', class: 'update-btn', onclick: function () { try { if (FD.app && FD.app.flush) FD.app.flush(); } catch (e) { /* reload anyway */ } root.location.reload(); } }, 'Refresh'));
     var skip = root.document.querySelector('.skip');   // after the skip link, so that stays first in the tab order
     if (skip && skip.parentNode === root.document.body) root.document.body.insertBefore(bar, skip.nextSibling); else root.document.body.insertBefore(bar, root.document.body.firstChild);   // in the page flow, at the top, so it pushes content down instead of covering it
-    shown = kind;
+    shown = kind; sync();
+    if (!resizeWired) { resizeWired = true; root.addEventListener('resize', sync); }
   }
-  function hide() { if (bar && bar.parentNode) bar.parentNode.removeChild(bar); bar = null; shown = null; }
+  /* The tab bar sticks to the top on wide screens: tell the stylesheet how tall the update bar is, so the tab bar sits just under it instead of being covered. */
+  function sync() { var s = root.document.documentElement.style; if (bar && bar.parentNode) s.setProperty('--update-h', Math.round(bar.getBoundingClientRect().height) + 'px'); else s.removeProperty('--update-h'); }
+  function hide() { if (bar && bar.parentNode) bar.parentNode.removeChild(bar); bar = null; shown = null; sync(); }
 
   function run() { return check(root.fetch.bind(root), FD.build).then(function (kind) { if (kind === 'new' || kind === 'signin') show(kind); else if (kind === 'same' && shown === 'signin') hide(); return kind; }); }
   function start() {

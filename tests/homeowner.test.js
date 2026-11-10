@@ -80,3 +80,17 @@ test('yearly costs show their short names, so a long label is never cut off at 4
   for (const d of C.DEBTS) assert.ok((d.short || d.label).length <= 40, d.id);
   for (const g of C.GOALS) assert.ok((g.short || g.label).length <= 40, g.id);
 });
+
+test('bank CSV: housing phrases beat loose words (found in review), and look-alikes are not caught', () => {
+  const cat = FD.csv.categorize, curly = String.fromCharCode(8217);
+  assert.equal(cat('SHELLPOINT MORTGAGE SERVICING'), 'mortgage', 'not gas because of "shell"');
+  assert.equal(cat('METRO MORTGAGE CO'), 'mortgage', 'not transit because of "metro"');
+  assert.equal(cat('Metropolitan Life HOME INSURANCE'), 'homeins');
+  assert.equal(cat('TACOMA HVAC'), 'homerepair', 'not eating out because of "taco"');
+  assert.equal(cat('PROPERTY OWNERS INS CO'), 'homeins', 'an insurer, not an association');
+  assert.equal(cat('Lowe' + curly + 's #123'), 'homerepair'); assert.equal(cat("Lowe's #123"), 'homerepair'); assert.equal(cat('LOWES 0456'), 'homerepair');
+  assert.equal(cat('RIVERBEND HOA'), 'hoa'); assert.equal(cat('HOA DUES AUTOPAY'), 'hoa'); assert.equal(cat('SUNSET RIDGE HOA FEE'), 'hoa');
+  assert.equal(cat('Hoa Binh Market'), 'groceries', 'Hoa is a common name'); assert.equal(cat('PHO HOA RESTAURANT'), 'dining');
+  assert.equal(cat('SHELL OIL 5521'), 'transport'); assert.equal(cat('METRO TRANSIT'), 'transport'); assert.equal(cat('TACO BELL'), 'dining');
+  assert.equal(cat('STATE FARM AUTO INSURANCE'), 'carins'); assert.equal(cat('SALES TAX'), 'other');
+});

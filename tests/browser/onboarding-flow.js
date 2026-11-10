@@ -45,7 +45,7 @@ let failed = 0; const out = (k, v) => { if (!v) failed++; console.log((v ? 'PASS
   out('bills: no Skip', /fixed bills/.test(await title()) && (await skip()) === 0);
   await next(); out('bills: nothing chosen is refused', /None \/ N\/A/.test(await err()));
   out('bills: home owners are offered mortgage, HOA dues, property tax and home insurance next to rent', (await p.locator('.chip:text-is("Rent")').count()) === 1 && (await p.locator('.chip:text-is("Mortgage")').count()) === 1 && (await p.locator('.chip:text-is("HOA / association dues")').count()) === 1 && (await p.locator('.chip:text-is("Property tax")').count()) === 1 && (await p.locator('.chip:text-is("Home / renters insurance")').count()) === 1 && /mortgage/i.test(await p.innerText('main')));
-  await p.click('.chip:has-text("Rent")'); await next();
+  await p.click('.chip:text-is("Rent")'); await next();
   out('bills: a bill with no amount is refused by name', /Enter an amount for Rent/.test(await err()));
   out('bills: the box no longer pretends a typical amount will be used', (await p.getAttribute('input[aria-label="Per month"]', 'placeholder')) === '0' && !/used if blank/.test(await p.innerText('main')));
   await p.fill('input[aria-label="Per month"]', '900'); await next();
@@ -74,9 +74,9 @@ let failed = 0; const out = (k, v) => { if (!v) failed++; console.log((v ? 'PASS
   await p.click('.tab:has-text("Settings")'); await p.click('button[aria-label^="Edit answer: Which fixed bills"]');
   out('the edit screen has the banner but no Home or Save and exit (Cancel and Save do that job)', (await p.locator('header.site-banner').count()) === 1 && (await p.locator('header.site-banner button').count()) === 0 && (await p.locator('button:has-text("Save and exit")').count()) === 0);
   out('editing a money answer later has no "Use defaults" either', (await p.locator('button:has-text("Use defaults")').count()) === 0 && (await p.locator('button:has-text("Save")').count()) === 1);
-  await p.click('.chip:has-text("Rent")');
+  await p.click('.chip:text-is("Rent")');
   out('...emptying the list is the same as choosing None / N/A', (await p.getAttribute('.chip:has-text("None / N/A ($0)")', 'aria-pressed')) === 'true');
-  await p.click('.chip:has-text("Rent")'); await p.click('button:has-text("Save")');
+  await p.click('.chip:text-is("Rent")'); await p.click('button:has-text("Save")');
   out('...Save refuses a bill with no amount', /Enter an amount for Rent/.test(await err()) && (await p.locator('.tabs').count()) === 0);
   await p.click('.chip:has-text("None / N/A ($0)")'); await p.click('button:has-text("Save")'); await p.waitForSelector('.tabs');
   out('...and saves once it is a valid answer', /Settings/.test(await p.textContent('h1')));

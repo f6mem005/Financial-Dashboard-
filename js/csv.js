@@ -91,6 +91,12 @@
   }
 
   var RULES = [
+    // housing first: specific phrases beat loose words below (a mortgage servicer called Shellpoint is not gas, Tacoma HVAC is not tacos)
+    [/mortgage|home loan|home lending/i, 'mortgage'],
+    [/\bhoa\s*(dues|fees?|assess\w*|pmt|payment)|\bhoa\s*$|homeowners? assoc|association dues|condo (fee|dues)|property owners assoc/i, 'hoa'],   // 'Hoa' alone is also a common name (Hoa Binh Market), so it needs dues-style words or to end the line
+    [/property tax|county tax|tax collector/i, 'proptax'],
+    [/homeowners? ins|home insurance|hazard ins|renters? insurance|property owners ins/i, 'homeins'],
+    [/home depot|\blowe.?s\b|ace hardware|plumb|roofing|hvac|handyman/i, 'homerepair'],
     [/uber eats|doordash|grubhub|chipotle|mcdonald|starbucks|restaurant|\bcafe\b|coffee|pizza|taco|burger|dunkin/i, 'dining'],
     [/kroger|safeway|whole foods|trader joe|aldi|walmart grocery|grocery|publix|costco|\bmarket\b/i, 'groceries'],
     [/shell|chevron|exxon|bp |gas station|metro|transit|uber|lyft|parking/i, 'transport'],
@@ -99,11 +105,6 @@
     [/steam|playstation|xbox|nintendo/i, 'gaming'],
     [/petco|petsmart|\bvet\b/i, 'pets'],
     [/\brent\b|landlord|property mgmt/i, 'rent'],
-    [/mortgage|home loan|home lending/i, 'mortgage'],
-    [/\bhoa\b|homeowners? assoc|association dues|condo (fee|dues)|property owners/i, 'hoa'],
-    [/property tax|county tax|tax collector/i, 'proptax'],
-    [/homeowners? ins|home insurance|hazard ins|renters? insurance/i, 'homeins'],
-    [/home depot|lowe'?s|ace hardware|plumb|roofing|hvac|handyman/i, 'homerepair'],
     [/geico|state farm|progressive|allstate|auto insurance|car insurance/i, 'carins'],
     [/navient|nelnet|sallie mae|student loan|loan payment|\bloan\b/i, 'debt'],
     [/verizon|t-mobile|at&t|mint mobile/i, 'phone'],

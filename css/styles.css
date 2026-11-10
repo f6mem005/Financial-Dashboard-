@@ -41,7 +41,7 @@ h1:focus { outline: none; }
 .topbar { padding: 14px 16px 0; max-width: 720px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .brand { font-weight: 700; letter-spacing: .01em; color: var(--text-2); }
 .page-title { font-size: 1.5rem; }
-html { scroll-padding-top: 7rem; }   /* a focused control is never left under the update bar */
+html { scroll-padding-top: calc(7rem + var(--update-h, 0px)); }   /* a focused control is never left under the update bar */
 .skip:focus { z-index: 70; }
 .update-bar { position: sticky; top: 0; z-index: 60; display: flex; gap: 12px; align-items: center; justify-content: space-between; padding: 10px 16px; background: #1d4f9f; color: #ffffff; font-size: .95rem; }
 .update-btn { flex: none; border: 0; border-radius: 10px; min-height: 40px; padding: 0 16px; background: #ffffff; color: #123a75; font: inherit; font-weight: 700; cursor: pointer; }
@@ -283,7 +283,7 @@ html { scroll-padding-bottom: 7rem; }   /* a focused control is never left under
   .shell > * { width: 100%; max-width: 720px; margin-left: auto; margin-right: auto; }
   .shell > .demo-banner { max-width: none; }
   /* On a wide screen (a computer, an iPad, a phone turned sideways) the tab bar sits under the top bar. It must STAY on screen when you scroll a long page, or there is no way back to Home: sticky, not static. */
-  .shell .tabs { order: 1; margin-top: 12px; position: sticky; top: 0; z-index: 20; background: var(--surface); }
+  .shell .tabs { order: 1; margin-top: 12px; position: sticky; top: var(--update-h, 0px); z-index: 20; background: var(--surface); }
   .shell .topbar { order: 0; } .shell .screen { order: 2; } .shell .disclaimer { order: 3; }
   .shell { padding-bottom: 24px; }
   .toast { bottom: 24px; }
