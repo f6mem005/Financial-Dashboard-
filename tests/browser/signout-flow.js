@@ -26,6 +26,7 @@ const SEED = `if (!sessionStorage.getItem('s')) { localStorage.setItem('fd.v1', 
 
   // ---- a person: the first screen, a question screen, Home, Settings
   p = await open({}, { role: 'person', name: 'Ana Lopez' }); await p.waitForSelector('button:has-text("Sign out")');
+  out('on the first screen Sign out is in the blue top area, near the top (not buried below the facts)', (await p.locator('.landing-hero button:has-text("Sign out")').count()) === 1 && (await p.evaluate(() => { const b = document.querySelector('.landing-hero .session-slot button').getBoundingClientRect(); return b.top < 110; })));
   out('a signed-in person sees Sign out on the first screen (one button)', (await signouts(p)) === 1 && /Sign out\. You are signed in as Ana Lopez/.test(await p.getAttribute('button:has-text("Sign out")', 'aria-label')));
   await p.click('button:has-text("Get started")'); await p.waitForTimeout(250);
   out('...and in the top bar of the questions, next to Home', (await signouts(p)) === 1 && (await p.locator('header.site-banner button:has-text("Home")').count()) === 1 && (await p.locator('header.site-banner button:has-text("Sign out")').count()) === 1);
@@ -88,6 +89,13 @@ const SEED = `if (!sessionStorage.getItem('s')) { localStorage.setItem('fd.v1', 
   // ---- demo mode: the Settings card does not talk about removing numbers that were never saved
   p = await open({}, { role: 'person', name: 'Ana' }); await p.waitForSelector('button:has-text("Sign out")'); await p.click('button:has-text("Look at a demo first")'); await p.waitForTimeout(250); await p.evaluate(() => window.FD.app.go('settings')); await p.waitForTimeout(250);
   out('in the demo the Signed in card does not tell you to delete your data', /Signed in/.test(await p.innerText('main')) && /nothing to remove/.test(await p.innerText('main')) && !/delete your data first/.test(await p.innerText('main'))); await p.ctx.close();
+
+  // ---- the first screen of a small phone (375x667, the size where the three facts stack): Sign out is on screen without scrolling
+  for (const [w, h] of [[375, 667], [320, 568], [390, 844]]) {
+    p = await open({ viewport: { width: w, height: h }, isMobile: true, hasTouch: true }, { role: 'person', name: 'Ana' }); await p.waitForSelector('.landing-hero button:has-text("Sign out")');
+    out(w + 'x' + h + ': the first screen shows Sign out without scrolling', await p.evaluate(() => { const b = document.querySelector('.landing-hero .session-slot button').getBoundingClientRect(); return b.top >= 0 && b.bottom <= window.innerHeight && b.right <= document.documentElement.clientWidth; }));
+    await p.ctx.close();
+  }
 
   // ---- a hostile name is only ever text
   p = await open({}, { role: 'person', name: '<img src=x onerror=alert(1)> Ana' }, true); await p.waitForSelector('header.site-banner button:has-text("Sign out")'); await p.evaluate(() => window.FD.app.go('settings')); await p.waitForTimeout(250);

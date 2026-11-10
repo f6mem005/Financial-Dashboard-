@@ -134,6 +134,8 @@ html { scroll-padding-top: 7rem; }   /* a focused control is never left under th
 .bill-list li, .txn, .cal-row, .answers li { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-top: 1px solid var(--line); }
 .bill-list li:first-child, .txn-list .txn:first-child, .cal-row:first-child, .answers li:first-child { border-top: 0; }
 .bill-name, .txn-main, .ans-main, .lg-name { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.bill-list li { flex-wrap: wrap; row-gap: 4px; }   /* with big amounts and an extra button the row wraps instead of squeezing the name to nothing */
+.bill-list .bill-name { flex: 1 1 6rem; }
 .bill-due { color: var(--text-2); font-size: .85rem; }
 .bill-amt { font-variant-numeric: tabular-nums; font-weight: 600; }
 .overdue .bill-due { color: var(--bad); font-weight: 600; }
@@ -318,6 +320,7 @@ html { scroll-padding-bottom: 7rem; }   /* a focused control is never left under
 @media (min-width: 820px) {
   .with-phone .landing-in { max-width: 940px; display: grid; grid-template-columns: minmax(0, 1fr) 260px; column-gap: 48px; align-items: start; }
   .with-phone .landing-in > * { grid-column: 1; }
+  .with-phone .landing-in > .session-hero { justify-self: end; }
   .with-phone .landing-in > .landing-phone-wrap { grid-column: 2; grid-row: 1 / span 8; margin-top: 0; }
   /* the text below lines up with the hero's left edge but keeps a readable line length */
   .with-phone .welcome { max-width: 940px; }
@@ -342,7 +345,8 @@ html { scroll-padding-bottom: 7rem; }   /* a focused control is never left under
 /* Sign out, for everyone who is signed in */
 .banner-actions { display: flex; align-items: center; gap: 6px; }
 .session-slot:empty { display: none; }
-.session-landing { display: contents; }
+.session-hero { align-self: flex-end; }   /* top right of the blue first screen */
+.btn.hero-signout { background: transparent; color: #ffffff; border-color: rgba(255, 255, 255, .65); }
 
 /* the top bar: labels stay on one line; on the narrowest phones the buttons drop to their own row instead of squeezing */
 .site-banner { flex-wrap: wrap; row-gap: 4px; }

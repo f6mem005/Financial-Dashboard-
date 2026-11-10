@@ -23,7 +23,7 @@
   function label() { return info && info.role === 'admin' ? 'the admin' : (info && info.name) || 'you'; }
   function button(kind) {
     var text = 'Sign out', aria = 'Sign out. You are signed in as ' + label();
-    if (kind === 'landing') return UI.btn(text, signOut, 'landing-link', { 'aria-label': aria });
+    if (kind === 'hero') return UI.btn(text, signOut, 'small hero-signout', { 'aria-label': aria });
     return UI.btn(text, signOut, 'small ghost signout-btn', { 'aria-label': aria });
   }
   function fill(slot) {
@@ -43,7 +43,7 @@
     slots = slots.filter(alive);
     slots.forEach(fill);
   }
-  /* kind: 'bar' (default, the top bar), 'landing' (a link in the first screen) or 'card' (the Settings card). */
+  /* kind: 'bar' (default, the top bar), 'hero' (top right of the first screen) or 'card' (the Settings card). */
   function slot(kind) {
     tick();
     var s = { el: h('span', { class: 'session-slot session-' + (kind || 'bar') }), kind: kind || 'bar', epoch: epoch };

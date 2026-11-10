@@ -202,6 +202,7 @@
           : 'We couldn’t read your saved data, and there wasn’t room to keep a copy. Starting over will replace it.'),
         UI.btn('Delete the unreadable data and any copies', function () { if (root.confirm('Delete the unreadable data and its backup copies? This can’t be undone.')) app.wipe(); }, 'small danger')) : null;
     var hero = h('header', { class: 'landing-hero' }, h('div', { class: 'landing-in' },
+      FD.session.slot('hero'),   // Sign out, top right, where it can be seen without scrolling
       h('div', { class: 'brand-row' }, logo(), h('div', { class: 'brand-text' }, h('span', { class: 'brand-name' }, 'Finance Sense'), h('span', { class: 'brand-tag' }, 'Your money, made simple'))),
       h('h1', { class: 'landing-title', tabindex: '-1', id: 'q-title' }, inApp ? 'How Finance Sense works' : 'Know where your money is going'),
       h('p', { class: 'landing-intro' }, 'Finance Sense is a simple money dashboard that makes managing your money clearer and easier. Answer a few quick questions and it shows what is safe to spend until payday, which bills are coming and where your balance is heading, then suggests how much you could set aside. No account, no bank connection, and your numbers stay on this device.'),
@@ -209,7 +210,6 @@
       !inApp ? h('ul', { class: 'landing-stats' }, FACTS.map(function (f) { return h('li', null, h('strong', null, f[0]), h('span', null, f[1])); })) : null,
       h('div', { class: 'landing-links' },
         !inApp ? link('Look at a demo first', function () { app.startDemo(); }) : null,
-        FD.session.slot('landing'),
         !inApp && resuming ? link('Start over with a blank setup', function () { app.startReal(); }) : null,
         inApp && S.mode === 'demo' ? link('Use my numbers', function () { app.startReal(); }) : null),
       !inApp ? phonePreview() : null));

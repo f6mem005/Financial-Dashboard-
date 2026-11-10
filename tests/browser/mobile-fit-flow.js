@@ -8,9 +8,11 @@ const done = { v: 1, mode: 'real', onboarded: true, answers: { pain: ['runout'],
   bills: [{ id: 'rent', amount: 900, due: 1 }, { id: 'phone', amount: 45, due: 10 }], variable: [{ id: 'groceries', monthly: 300 }], annual: [], debts: [{ id: 'd-card', type: 'card', balance: 1000, min: 35, apr: 22, aprKnown: true }] },
   settings: { balanceSet: true, openingBalance: 400 }, transactions: [], billsPaid: {}, subs: [] };
 const big = JSON.parse(JSON.stringify(done)); Object.assign(big.answers, { pay: { amount: 99999.99, none: false, nextPayday: null }, otherIncome: [{ id: 'side', monthly: 54321 }],
-  bills: [{ id: 'rent', amount: 12345.67, due: 1 }, { id: 'phone', amount: 4567.89, due: 10 }], variable: [{ id: 'groceries', monthly: 8765.43 }], debts: [{ id: 'd-card', type: 'card', balance: 987654.32, min: 1234.56, apr: 24.99, aprKnown: true }] });
+  bills: [{ id: 'rent', amount: 12345.67, due: 1 }, { id: 'phone', amount: 4567.89, due: 10 }, { id: 'internet', amount: 8765.43, due: 17 }], variable: [{ id: 'groceries', monthly: 8765.43 }], debts: [{ id: 'd-card', type: 'card', balance: 987654.32, min: 1234.56, apr: 24.99, aprKnown: true }] });
 Object.assign(big.settings, { openingBalance: -12345.67, savingsBalance: 1234567 });
-const mockSession = (ctxOrPage) => ctxOrPage.route('**/auth/session', (r) => r.fulfill({ contentType: 'application/json', body: JSON.stringify({ role: 'person', name: 'A person with a rather long name here' }) }));   // everyone is signed in, so the Sign out buttons are on every screen
+// "Today" is frozen (the 10th), so the same bills are due today (the 10th) and upcoming (the 17th) on every run: layout must not depend on the date the test runs.
+const FREEZE = `(() => { const R = Date; const T = new R(2026, 10, 10, 12).getTime(); class D extends R { constructor(...a) { if (a.length === 0) super(T); else super(...a); } static now() { return T; } } window.Date = D; })();`;
+const mockSession = (ctxOrPage) => ctxOrPage.addInitScript(FREEZE).then(() => ctxOrPage.route('**/auth/session', (r) => r.fulfill({ contentType: 'application/json', body: JSON.stringify({ role: 'person', name: 'A person with a rather long name here' }) })));   // everyone is signed in, so the Sign out buttons are on every screen
 const TABS = ['home', 'forecast', 'plan', 'ideas', 'activity', 'settings'];
 /* Anything wider than the page, or text spilling out of its own box (which looks broken even when the page itself does not widen). */
 const probe = () => {
@@ -57,6 +59,9 @@ const probe = () => {
     if (rows < 3) bads.push('the cash calendar did not render (' + rows + ' rows), so the big-amount check would prove nothing');
     await p.evaluate(() => document.querySelectorAll('li.cal-row').forEach((li, i) => { const a = li.querySelector('.cal-amt'), bl = li.querySelector('.cal-bal'), l = li.querySelector('.cal-label'); if (a && a.textContent) a.textContent = i % 2 ? '-$12,345.67' : '+$99,999.99'; bl.textContent = '-$12,345.67'; l.textContent = 'Subscriptions and memberships'; }));
     await check(p, 'every calendar row (including the pay row) with -$12,345.67');
+    // a bill's name must stay readable next to a big amount and its button (it used to collapse to a few pixels and break letter by letter, which the overflow probe cannot see)
+    const names = await p.evaluate(() => [...document.querySelectorAll('.bill-list li .bill-name')].filter((n) => !/^\u2713/.test(n.textContent)).map((n) => Math.round(n.getBoundingClientRect().width)));
+    if (names.length < 2 || names.some((x) => x < 60)) bads.push('bill names are squeezed (widths ' + JSON.stringify(names) + ')');
     await ctx.close(); ctx = await b.newContext(phone); await mockSession(ctx); p = await ctx.newPage(); await p.goto(URL); await p.click('button:has-text("Look at a demo first")'); await p.evaluate(() => window.FD.app.go('ideas')); await p.waitForTimeout(300);
     await p.locator('.chart-wrap').first().focus();
     for (const [key, times] of [['ArrowRight', 1], ['Shift+ArrowRight', 40], ['Shift+ArrowLeft', 80]]) {   // first point, far right end, far left end
