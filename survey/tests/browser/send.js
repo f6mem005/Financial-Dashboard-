@@ -27,7 +27,7 @@ const URL = 'http://localhost:8771/index.html', KEY = 'fs-survey-v1';
   out('over http the survey stays in preview mode (no send hook)', await t.p.evaluate(() => typeof SV.config.send) === 'undefined');
   await t.p.click('.nav .primary'); await t.p.waitForSelector('text=Thank you');
   out('preview finish posts nothing', t.posts.length === 0 && /Preview mode/.test(await t.p.innerText('#app')));
-  out('page only ever requested its own static files', t.others.every(u => /^http:\/\/localhost:8771\/(index\.html|css\/survey\.css|js\/[a-z]+\.js)?$/.test(u)));
+  out('page only ever requested its own static files (and the one who-is-signed-in check)', t.others.every(u => /^http:\/\/localhost:8771\/(index\.html|css\/survey\.css|js\/[a-z]+\.js|auth\/session)?$/.test(u)));
   await t.ctx.close();
 
   // 2. real send: two separate posts, answers anonymous, email on its own

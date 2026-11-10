@@ -123,3 +123,13 @@ h1 { font-size: 1.5rem; line-height: 1.25; }
 
 @media (min-width: 720px) { .nav { padding-left: calc(50% - 320px + 16px); padding-right: calc(50% - 320px + 16px); } }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; scroll-behavior: auto !important; } }
+
+/* Sign out, for everyone who is signed in */
+.banner-row { display: flex; align-items: center; justify-content: space-between; gap: 8px 12px; flex-wrap: wrap; }
+.session-slot { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; margin-left: auto; }
+.session-slot:empty { display: none; }
+.signout-btn { border: 1px solid var(--line); background: transparent; color: inherit; border-radius: 10px; padding: 4px 12px; min-height: 40px; font: inherit; font-size: .85rem; font-weight: 600; cursor: pointer; white-space: nowrap; }
+.banner.hero .signout-btn { border-color: rgba(255, 255, 255, .6); color: #ffffff; }
+.banner.hero :focus-visible { outline-color: #ffffff; }
+.so-fail { font-size: .8rem; font-weight: 600; color: var(--bad); }
+.banner.hero .so-fail { color: #ffffff; text-decoration: underline; }

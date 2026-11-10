@@ -8,7 +8,7 @@ const URL = 'http://localhost:8771/index.html';
   const b = await chromium.launch(); const errs = [];
   const out = (k, v) => console.log((v ? 'PASS ' : 'FAIL ') + k);
   const mk = async (opts) => { const ctx = await b.newContext(Object.assign({ viewport: { width: 390, height: 844 } }, opts || {})); const p = await ctx.newPage(); slow(p);
-    p.on('pageerror', e => errs.push('pageerror ' + e.message)); p.on('console', m => { if (['error', 'warning'].includes(m.type())) errs.push(m.text()); }); return { ctx, p }; };
+    p.on('pageerror', e => errs.push('pageerror ' + e.message)); p.on('console', m => { if (['error', 'warning'].includes(m.type()) && !/\/auth\/session/.test((m.location() || {}).url || '')) errs.push(m.text()); /* a plain file server has no sign-in, so its 404 for /auth/session is expected here */ }); return { ctx, p }; };
   const KEY = 'fs-survey-v1';
   const full = () => { const o = {}; ['safe','where','leaks','bills','forecast','whatif','alerts','goals','debt','subs','yearly','lowmonth','terms','shared','invest'].forEach((id, i) => { o[id] = (i % 5) + 1; }); return o; };
   const seed = (p, over, tOffset) => p.evaluate(([KEY, over, tOffset, full]) => localStorage.setItem(KEY, JSON.stringify(Object.assign({ v: 1, t: Date.now() + tOffset, started: true, qid: 'q5', seed: 7, rid: 'abcdef0123456789abcdef01',

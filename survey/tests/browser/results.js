@@ -6,7 +6,7 @@ const PAGE = 'file://' + path.resolve(__dirname, '../../results/index.html');
 (async () => {
   const b = await chromium.launch(); const errs = [], requests = [];
   const ctx = await b.newContext({ viewport: { width: 1100, height: 900 }, acceptDownloads: true }); const p = await ctx.newPage();
-  p.on('pageerror', e => errs.push('pageerror ' + e.message)); p.on('console', m => { if (['error', 'warning'].includes(m.type())) errs.push(m.text()); });
+  p.on('pageerror', e => errs.push('pageerror ' + e.message)); p.on('console', m => { if (['error', 'warning'].includes(m.type()) && !/\/auth\/session/.test((m.location() || {}).url || '')) errs.push(m.text()); /* a plain file server has no sign-in, so its 404 for /auth/session is expected here */ });
   p.on('request', r => requests.push(r.url()));
   const out = (k, v) => console.log((v ? 'PASS ' : 'FAIL ') + k);
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'results-test-'));

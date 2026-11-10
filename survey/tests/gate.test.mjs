@@ -373,3 +373,16 @@ test('people: a create held between its two writes cannot be mistaken for a left
   assert.ok(!rB.error, 'B finished first and holds the name'); assert.match(rA.error, /already/, 'A, arriving late, is told the name is taken');
   assert.equal((await P.listPeople()).length, 1, 'one record, not two'); assert.equal((await P.findByName('Ana')).id, rB.id);
 });
+
+test('gate: the Admins-only page has a working Sign out button, so a signed-in person is never stuck there', async () => {
+  reset(); await P.createPerson('Ana', 'rakobu47'); const { cookie } = await signInAs('Ana', 'rakobu47'); withSessionCheck(viaSessionFn);
+  const r = await gate(req('/admin/', { cookie, headers: { accept: 'text/html' } }), next()); assert.equal(r.status, 403); const html = await r.text();
+  assert.match(html, /<button type="button" id="signout" class="go">Sign out<\/button>/); assert.match(html, /<p id="so-err" class="err" role="alert"><\/p>/);
+  assert.match(html, /<script src="\/auth\/gate\.js"><\/script>/); assert.match(html, /name left blank/);
+  assert.ok(!/<script(?![^>]*\ssrc=)/.test(html) && !/onclick=/.test(html), 'still no inline script');
+  const fs = await import('node:fs'); const js = fs.readFileSync(new URL('../auth/gate.js', import.meta.url), 'utf8');
+  assert.match(js, /getElementById\('signout'\)/); assert.match(js, /fetch\('\/auth\/logout', \{ method: 'POST'/); assert.match(js, /r\.ok\) location\.assign\('\/'\); else fail\(\)/, 'only a sign-out that worked navigates away');
+  // the sign-out call itself: POST clears the cookie; GET and a cross-site POST do not
+  const out = await logout(req('/auth/logout', { method: 'POST', headers: { origin: SITE } })); assert.equal(out.status, 200); assert.match(out.headers.get('set-cookie'), /Max-Age=0|Expires=/i);
+  assert.equal((await logout(req('/auth/logout', { method: 'GET' }))).status, 405); assert.equal((await logout(req('/auth/logout', { method: 'POST', headers: { origin: 'https://evil.test' } }))).status, 403);
+});

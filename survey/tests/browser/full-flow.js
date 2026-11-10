@@ -10,7 +10,7 @@ const URL = 'http://localhost:8771/index.html';
   // The survey ignores navigation taps within 300ms of the previous one (double-tap protection), so scripted clicks pause briefly.
   const slow = (page) => { const c = page.click.bind(page); page.click = async (sel, o) => { if (/^\.nav /.test(sel) && !(o && o.force)) await page.waitForTimeout(320); return c(sel, o); }; return page; };
   slow(p);
-  p.on('pageerror', e => errs.push('pageerror ' + e.message)); p.on('console', m => { if (['error', 'warning'].includes(m.type())) errs.push(m.text()); });
+  p.on('pageerror', e => errs.push('pageerror ' + e.message)); p.on('console', m => { if (['error', 'warning'].includes(m.type()) && !/\/auth\/session/.test((m.location() || {}).url || '')) errs.push(m.text()); /* a plain file server has no sign-in, so its 404 for /auth/session is expected here */ });
   const out = (k, v) => console.log((v ? 'PASS ' : 'FAIL ') + k);
   const title = async () => (await p.textContent('h1')).replace('Required', '').trim();
   const next = () => p.click('.nav .primary');

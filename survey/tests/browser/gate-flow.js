@@ -78,6 +78,23 @@ const CODE = /^([bdfghkmnprstvz][aeiou]){3}[2-9]{2}$/;
     out('a person cannot open the admin area', adminTry.status() === 403 && /Admins only/.test(await p.innerText('body')));
     const apiTry = await p.evaluate(async () => (await fetch('/auth/admin', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'list' }) })).status);
     out('a person cannot use the admin tools', apiTry === 403);
+    // ---- Sign out for everyone: a person sees it on the survey and on the Admins-only page, and can then sign in as the admin in the same browser
+    {
+      const { ctx: sctx, p: s } = await personPage(); await s.goto(BASE); await signIn(s, 'Ana Lopez', code1); await s.waitForSelector('#app', { timeout: 8000 });
+      await s.waitForSelector('button:has-text("Sign out")', { timeout: 6000 });
+      out('a signed-in person sees a Sign out button in the survey banner', (await s.locator('header.banner button:has-text("Sign out")').count()) === 1);
+      await s.goto(BASE + 'admin/');
+      out('the "Admins only" page has a Sign out button and says how to get in as the admin', (await s.locator('#signout').count()) === 1 && /name left blank/.test(await s.innerText('body')));
+      await s.route('**/auth/logout', (r) => r.fulfill({ status: 503, contentType: 'application/json', body: '{"error":"x"}' }));
+      await s.click('#signout'); await s.waitForFunction(() => /Could not sign out/.test(document.getElementById('so-err').textContent));
+      out('a sign-out that fails says so, stays on the page and the button works again', (await s.locator('#signout').isEnabled()) && /Admins only/.test(await s.innerText('body')));
+      await s.unroute('**/auth/logout');
+      await s.click('#signout'); await s.waitForSelector('#f', { timeout: 8000 });
+      out('signing out there ends the session and returns to the sign-in page', SIGNIN.test(await s.innerText('body')) && !(await sctx.cookies()).some((c) => c.name === '__Host-fs_gate'));
+      await signIn(s, '', ADMIN); await s.waitForURL('**/admin/', { timeout: 8000 });
+      out('...and then the same browser signs in as the admin', (await s.locator('#signout').count()) === 1 && (/Add a person/.test(await s.innerText('#app')) || (await s.waitForSelector('#generate'), true)));
+      await sctx.close();
+    }
     await p.goto(BASE); await p.waitForSelector('#app');
     const { ctx: wctx, p: w } = await personPage(); await w.goto(BASE); await signIn(w, 'Ana Lopez', 'wrong-code-1'); await w.waitForFunction(() => document.getElementById('err').textContent.length > 0);
     const w2 = await (async () => { await w.fill('#nm', 'Nobody'); await w.fill('#pc', code1); await w.click('#go'); await w.waitForFunction(() => document.getElementById('err').textContent.length > 0); return await w.textContent('#err'); })();

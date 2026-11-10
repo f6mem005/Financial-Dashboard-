@@ -302,7 +302,9 @@
       h('path', { d: 'M20 9 L25 9 L25 14', class: 'logo-line' }));
     return h('header', { class: 'banner' + (hero ? ' hero' : '') },
       h('div', { class: 'banner-in' },
-        h('div', { class: 'brand' }, logo, h('div', { class: 'brand-text' }, h('span', { class: 'brand-name' }, B.name || 'Finance Sense'), h('span', { class: 'brand-tag' }, B.tag || 'Questionnaire'))),
+        h('div', { class: 'banner-row' },
+          h('div', { class: 'brand' }, logo, h('div', { class: 'brand-text' }, h('span', { class: 'brand-name' }, B.name || 'Finance Sense'), h('span', { class: 'brand-tag' }, B.tag || 'Questionnaire'))),
+          SV.session ? SV.session.slot() : null),   // Sign out shows here for anyone who is signed in
         hero && B.sentBy ? h('p', { class: 'sent' }, (B.sentLabel || 'Sent to you by') + ' ', h('strong', null, B.sentBy)) : null));
   }
 
@@ -410,5 +412,7 @@
     state = fresh(); render(true); say('This survey was changed in another window, so this page was reset.'); // otherwise typing here would re-save the finished answers
   });
 
+  SV.flush = function () { if (!state.done && !state.sending && state.started) save(); };   // used by Sign out so nothing typed is lost
+  if (SV.session) SV.session.load();   // who is signed in, so the banner can show Sign out
   render(false);
 })(typeof window !== 'undefined' ? window : globalThis);
