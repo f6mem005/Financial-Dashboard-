@@ -33,7 +33,7 @@ GitHub, so a push does not deploy. If that ever changes, a push could publish, s
 - Unit tests: `node --test tests/*.test.js tests/*.test.mjs` (engine, config mapping, CSV, store, ideas, backup, sign-in gate; pass
   explicit globs, a bare directory fails). Every fix to forecast, safe-to-spend, bill, goal, debt, suggestion or backup logic needs a
   regression test.
-- Browser tests: `tests/browser/gate-flow.js` (starts its own harness) and `tests/browser/ideas-flow.js` (needs Playwright and the repo served on port 8912; see the top of the file).
+- Browser tests: `tests/browser/gate-flow.js` (starts its own harness), `tests/browser/demo-only-flow.js` and `tests/browser/ideas-flow.js` (needs Playwright and the repo served on port 8912; see the top of the file).
 - In the browser: serve the repo root (`python3 -m http.server`) and drive it with the preinstalled Chromium and
   Playwright. Check phone-sized and desktop screens, light and dark mode, the demo, and a real onboarding run
   (including skipping every question).
@@ -81,3 +81,4 @@ Before every upload, run `node scripts/stamp-version.mjs <staging folder>` so op
 - Commit and push as separate steps. Do not open a pull request unless asked.
 
 - `survey/` is a separate site (the questionnaire) stored in this repo for backup. Never stage it into the app deploy, never put secrets in it (this repo is public), and keep its own tests green: `cd survey && node --test tests/*.test.js tests/*.test.mjs`.
+- The survey's `/demo/` page runs this app's own code in demo-only mode (`window.FD_DEMO_ONLY` in `js/app.js`; files copied into `survey/demo/app/` by `survey/scripts/sync-demo.mjs`, git-ignored). That mode must stay read-only toward real data: sample data only, no Settings, nothing saved, Continue goes to a same-site path only. Changes to it need `tests/browser/demo-only-flow.js` (app, port 8912) and `survey/tests/browser/demo-flow.js` (survey, port 8771, after running the sync script), plus the security check.

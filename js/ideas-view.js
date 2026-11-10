@@ -51,7 +51,7 @@
         return h('li', { class: 'idea' },
           h('div', { class: 'idea-main' }, h('strong', null, s.title), h('div', { class: 'hint' }, s.detail)),
           h('div', { class: 'idea-actions' },
-            UI.btn(APPLY_LABEL[s.apply.kind] || 'Update', function () { applyDrift(app, s); }, 'small primary', { 'aria-label': (APPLY_LABEL[s.apply.kind] || 'Update') + ': ' + s.title }),
+            s.apply.kind === 'goto' && app.demoOnly ? null : UI.btn(APPLY_LABEL[s.apply.kind] || 'Update', function () { applyDrift(app, s); }, 'small primary', { 'aria-label': (APPLY_LABEL[s.apply.kind] || 'Update') + ': ' + s.title }),
             UI.btn('Not now', function () { dismiss(app, s.id); }, 'small', { 'aria-label': 'Dismiss: ' + s.title })));
       }))
     ], { cls: 'attention' });
@@ -193,7 +193,7 @@
         var t = S.transactions.filter(function (x) { return x.id === d.txnId; })[0]; if (!t) return;
         if (!root.confirm('Remove the ' + money(t.amount, { cents: true }) + ' charge for “' + t.note + '” on ' + U.fmtDate(U.parseISO(t.date)) + '? If it was a real purchase, you can add it back in Activity.')) return;
         S.transactions = S.transactions.filter(function (x) { return x.id !== d.txnId; });
-        if (app.commit()) UI.toast('Removed. Your balance went up by ' + money(t.amount, { cents: true }) + '. If your bank balance already includes both charges, update it in Settings.', 8000);
+        if (app.commit()) UI.toast('Removed. Your balance went up by ' + money(t.amount, { cents: true }) + '.' + (app.demoOnly ? '' : ' If your bank balance already includes both charges, update it in Settings.'), 8000);   // the demo has no Settings
       }, 'small', { 'aria-label': 'Remove the second charge: ' + d.title });
       else if (d.kind === 'bill-dup') act = UI.btn('Edit my bills', function () { editAnswer(app, 'bills'); }, 'small');
       else act = UI.btn('Review subscriptions', function () { app.go('plan'); }, 'small');
@@ -211,7 +211,7 @@
     return UI.card('When something changes', [
       h('p', { class: 'q-help' }, 'New job, a raise, a rent or mortgage change, a new HOA fee, a new subscription, a new debt: update that one answer and the forecast, safe-to-spend and ideas all use it from today. Spending you already logged stays as it was. Nothing is lost by changing an answer.'),
       h('div', { class: 'chips' }, q('My pay changed', 'pay'), q('A bill changed', 'bills'), q('My spending changed', 'variable'), q('New debt', 'debts'), q('New goal', 'goals'),
-        UI.btn('Update my balance', function () { app.go('settings'); }, 'small')),
+        app.demoOnly ? null : UI.btn('Update my balance', function () { app.go('settings'); }, 'small')),   // Settings does not exist in the survey's demo
       h('p', { class: 'hint' }, 'Logging your spending keeps this honest. We compare it with what you told us and point out differences at the top of this page.')]);
   }
 

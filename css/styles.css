@@ -366,3 +366,6 @@ html { scroll-padding-bottom: 7rem; }   /* a focused control is never left under
 .brand-btn { background: none; border: 0; padding: 0; margin: 0; color: inherit; font: inherit; text-align: left; cursor: pointer; border-radius: 8px; min-height: 44px; display: flex; align-items: center; }
 /* the first screen's Sign out slot keeps its height from the start, so the screen does not jump down when the sign-in answer arrives */
 .session-hero:empty { display: block; min-height: 36px; }
+
+/* demo-only mode (the survey's demo page): the continue bar is pinned to the top */
+.demo-banner.demo-only { position: sticky; top: 0; z-index: 55; }

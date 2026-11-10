@@ -8,6 +8,17 @@
   // Clickjacking guard: a <meta> CSP can't set frame-ancestors, so refuse to render inside another page.
   try { if (root.top !== root.self) doc.documentElement.hidden = true; } catch (e) { doc.documentElement.hidden = true; }
 
+  /* Demo-only mode: a host page (the survey's demo page) sets window.FD_DEMO_ONLY = { continueUrl, continueLabel } before this script loads. The app then
+     starts straight in the sample dashboard, can never switch to real data, hides Settings and How it works, and shows a pinned "continue" bar that goes
+     to continueUrl (a same-site path). Nothing is written to storage (demo mode never saves). Without that setting nothing here changes. */
+  var DEMO_ONLY = (function () {
+    var d = root.FD_DEMO_ONLY;
+    if (!d || typeof d !== 'object') return null;
+    var url = typeof d.continueUrl === 'string' && /^\/(?!\/)[A-Za-z0-9_\/.?=&-]{0,100}$/.test(d.continueUrl) ? d.continueUrl : '/';   // a path on this site only
+    return { continueUrl: url, continueLabel: typeof d.continueLabel === 'string' && d.continueLabel.length <= 60 ? d.continueLabel : 'Continue',
+      note: typeof d.note === 'string' && d.note.length <= 200 ? d.note : 'Example with made-up numbers. Look around, then continue.' };
+  })();
+
   var TABS = [['home', 'Home', 'M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z'],
     ['forecast', 'Forecast', 'M3 17l6-6 4 4 8-8M15 7h6v6'],
     ['plan', 'Plan', 'M5 4h14v16H5zM9 9h6M9 13h6'],
@@ -15,9 +26,12 @@
     ['activity', 'Activity', 'M4 6h16M4 12h16M4 18h10'],
     ['settings', 'Settings', 'M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM3 12h3M18 12h3M12 3v3M12 18v3']];
 
+  if (DEMO_ONLY) TABS = TABS.filter(function (t) { return t[0] !== 'settings'; });   // Settings holds the real-data tools
+
   var app = {
-    S: FD.store.load(),
+    S: DEMO_ONLY ? FD.sample.build(U.today()) : FD.store.load(),
     ui: { tab: 'home', how: false, started: false, step: 0, editing: null, horizon: 3, whatIf: { cut: Object.create(null), extraSavings: 0 }, debtExtra: 50, txnLimit: 50 },
+    demoOnly: !!DEMO_ONLY,   // the survey's demo page: no Settings, so views leave out what would send people there
     _cfg: null, _pendingBalance: undefined,
     now: function () { return U.today(); },
     cfg: function () {
@@ -44,7 +58,7 @@
       app.S.settings.balanceChecked = U.iso(app.now());
       if (!quiet) app.commit(); else app.save();
     },
-    go: function (tab) { app.ui.tab = tab; app.ui.editing = null; app.render(true); },
+    go: function (tab) { if (DEMO_ONLY && tab === 'settings') tab = 'home'; app.ui.tab = tab; app.ui.editing = null; app.render(true); },
     goStep: function (i) {
       app.ui.step = Math.max(0, Math.min(i, FD.onboarding.total));
       if (app.S.mode === 'real' && !app.S.onboarded) { app.S.setupStep = app.ui.step; if (!app._stale) app.save(); }   // so "Continue setup" picks up here, even after the tab is closed
@@ -79,6 +93,7 @@
       app.S.onboarded = true; app.ui.tab = 'home'; app.commit();
     },
     startReal: function () {
+      if (DEMO_ONLY) return;   // the demo can never turn into a real setup
       // never silently replace data that exists on disk (e.g. saved in another tab, or unreadable)
       if (FD.store.hasData() && !root.confirm('This browser already has saved Finance Sense data. Starting over will replace it. Continue?')) return;
       app._stale = false; // only after the confirm above: cancelling must not mark an out-of-date tab as current
@@ -90,9 +105,10 @@
       app._stale = false;
       app.S = FD.sample.build(app.now()); app._cfg = null; app.ui.tab = 'home'; app.ui.how = false; app.ui.proj = null; app.render(true);
     },
-    wipe: function () { app._stale = false; FD.store.clear(); app.S = FD.store.defaultState(); app._cfg = null; app.ui.tab = 'home'; app.ui.how = false; app.ui.proj = null; app.render(true); },
+    wipe: function () { if (DEMO_ONLY) return; app._stale = false; FD.store.clear(); app.S = FD.store.defaultState(); app._cfg = null; app.ui.tab = 'home'; app.ui.how = false; app.ui.proj = null; app.render(true); },
     /* a backup the person chose to restore (already validated by FD.backup): it replaces what is on this device */
     replaceState: function (state) {
+      if (DEMO_ONLY) return;
       app._stale = false; app.S = state; app._cfg = null;
       app.ui.step = app.S.onboarded ? 0 : Math.min(app.S.setupStep || 0, FD.onboarding.total); app.ui.editing = null; app.ui.tab = 'home'; app.ui.how = false; app.ui.proj = null; app.ui.started = true; app.ui.whatIf = { cut: Object.create(null), extraSavings: 0 };
       var ok = app.save(); app.render(true);
@@ -124,6 +140,7 @@
         node = shell(FD.views[app.ui.tab](app));
       }
       mount.appendChild(node);
+      if (DEMO_ONLY) syncDemoBar();
       if (focusTitle) { var t = doc.getElementById('q-title'); if (t) { t.focus({ preventScroll: true }); root.scrollTo(0, 0); } }
       else if (key) {
         var cands = mount.querySelectorAll('button,input,select'), seen = 0;
@@ -238,12 +255,20 @@
 
   function shell(content) {
     var S = app.S;
-    var banner = S.mode === 'demo' ? h('div', { class: 'demo-banner', role: 'status' }, h('span', null, 'Demo with sample data — changes aren’t saved'), UI.btn('Use my numbers', function () { app.startReal(); }, 'small primary')) : null;
+    var banner = DEMO_ONLY ? h('div', { class: 'demo-banner demo-only', role: 'status' }, h('span', null, DEMO_ONLY.note), UI.btn(DEMO_ONLY.continueLabel, function () { root.location.assign(DEMO_ONLY.continueUrl); }, 'small primary'))
+      : S.mode === 'demo' ? h('div', { class: 'demo-banner', role: 'status' }, h('span', null, 'Demo with sample data — changes aren’t saved'), UI.btn('Use my numbers', function () { app.startReal(); }, 'small primary')) : null;
     var nav = h('nav', { class: 'tabs', 'aria-label': 'Main' }, TABS.map(function (t) {
       return h('button', { type: 'button', class: 'tab' + (app.ui.tab === t[0] ? ' on' : ''), 'aria-current': app.ui.tab === t[0] ? 'page' : null, onclick: function () { app.go(t[0]); } }, icon(t[2]), h('span', null, t[1]));
     }));
-    return h('div', { class: 'shell' }, banner, UI.banner(UI.btn('How it works', function () { app.ui.how = true; app.render(true); }, 'small ghost how-btn'), function () { app.go('home'); }), content, disclaimer(), nav);
+    return h('div', { class: 'shell' }, banner, UI.banner(DEMO_ONLY ? null : UI.btn('How it works', function () { app.ui.how = true; app.render(true); }, 'small ghost how-btn'), function () { app.go('home'); }), content, disclaimer(), nav);
   }
+
+  /* The pinned continue bar sticks to the top; on wide screens the tab bar sticks under it (the same --update-h the update bar uses). */
+  function syncDemoBar() {
+    var b = doc.querySelector('.demo-only'), st = doc.documentElement.style;
+    if (b) st.setProperty('--update-h', Math.round(b.getBoundingClientRect().height) + 'px'); else st.removeProperty('--update-h');
+  }
+  if (DEMO_ONLY) root.addEventListener('resize', syncDemoBar);
 
   // Another tab changed the data: reload it instead of overwriting it on our next save.
   root.addEventListener('storage', function (e) {
