@@ -94,3 +94,9 @@ test('bank CSV: housing phrases beat loose words (found in review), and look-ali
   assert.equal(cat('SHELL OIL 5521'), 'transport'); assert.equal(cat('METRO TRANSIT'), 'transport'); assert.equal(cat('TACO BELL'), 'dining');
   assert.equal(cat('STATE FARM AUTO INSURANCE'), 'carins'); assert.equal(cat('SALES TAX'), 'other');
 });
+
+test('bank CSV: the usual ways a bank writes an HOA payment are recognised, and the name Hoa is still not', () => {
+  const cat = FD.csv.categorize;
+  for (const d of ['HOA ACH', 'HOA-DUES', 'HOA *DUES', 'HOA #1234', 'HOA MGMT', 'HOA ACH PMT', 'OAKS HOA - ACH', 'SUNSET HOA ASSOC', 'HOA DUES', 'RIVERBEND HOA']) assert.equal(cat(d), 'hoa', d);
+  for (const d of ['Hoa Binh Market', 'HOA BINH SUPERMARKET', 'PHO HOA RESTAURANT']) assert.notEqual(cat(d), 'hoa', d);
+});

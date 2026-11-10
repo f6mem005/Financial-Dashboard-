@@ -45,7 +45,7 @@
     if (!resizeWired) { resizeWired = true; root.addEventListener('resize', sync); }
   }
   /* The tab bar sticks to the top on wide screens: tell the stylesheet how tall the update bar is, so the tab bar sits just under it instead of being covered. */
-  function sync() { var s = root.document.documentElement.style; if (bar && bar.parentNode) s.setProperty('--update-h', Math.round(bar.getBoundingClientRect().height) + 'px'); else s.removeProperty('--update-h'); }
+  function sync() { if (!root.document) return; var s = root.document.documentElement.style; if (bar && bar.parentNode) s.setProperty('--update-h', Math.round(bar.getBoundingClientRect().height) + 'px'); else s.removeProperty('--update-h'); }
   function hide() { if (bar && bar.parentNode) bar.parentNode.removeChild(bar); bar = null; shown = null; sync(); }
 
   function run() { return check(root.fetch.bind(root), FD.build).then(function (kind) { if (kind === 'new' || kind === 'signin') show(kind); else if (kind === 'same' && shown === 'signin') hide(); return kind; }); }

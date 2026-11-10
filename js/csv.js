@@ -93,7 +93,7 @@
   var RULES = [
     // housing first: specific phrases beat loose words below (a mortgage servicer called Shellpoint is not gas, Tacoma HVAC is not tacos)
     [/mortgage|home loan|home lending/i, 'mortgage'],
-    [/\bhoa\s*(dues|fees?|assess\w*|pmt|payment)|\bhoa\s*$|homeowners? assoc|association dues|condo (fee|dues)|property owners assoc/i, 'hoa'],   // 'Hoa' alone is also a common name (Hoa Binh Market), so it needs dues-style words or to end the line
+    [/\bhoa\s*(dues|fees?|assess\w*|pmt|payment)|\bhoa\s+(ach|mgmt|management|assoc\w*)|\bhoa\s*[-*#:]|\bhoa\s*$|homeowners? assoc|association dues|condo (fee|dues)|property owners assoc/i, 'hoa'],   // 'Hoa' alone is also a common name (Hoa Binh Market), so it needs dues-style words or to end the line
     [/property tax|county tax|tax collector/i, 'proptax'],
     [/homeowners? ins|home insurance|hazard ins|renters? insurance|property owners ins/i, 'homeins'],
     [/home depot|\blowe.?s\b|ace hardware|plumb|roofing|hvac|handyman/i, 'homerepair'],
