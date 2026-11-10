@@ -127,17 +127,24 @@ new build id into the staged `js/version.js` and `version.json`. The copy in the
 stamped) never shows the bar. **Skipping the stamp means nobody is told about that update.** Pages that were open before the first stamped deploy do not have the checker yet, so only updates after that one are announced.
 The page's security policy allows connections to its own site only (`connect-src 'self'`) so it can read `/version.json`; no other host.
 
-## The example screens and the two feedback questions
+## The demo and the two feedback questions
 
-Near the end (after question 14) the survey shows **example screens**: five pictures of the dashboard (Home, Forecast, Plan, Ideas, Spend less) with made-up numbers, paged with Previous and Next screen. They hold no answer, send nothing and are
-**not counted as a question** in "n of N". The first screen of the survey also has an optional **quick look** that shows the first example screen, so people can see the product before they answer (this can colour the early answers a little;
-say so when you read the results). After the example screens come two optional text questions, **q17** (what they do not like about what they saw) and **q18** (what they would like that is not there), then "anything else" (q16) and the optional email (q15).
-The content is in `SV.tour` and the questions list in `js/questions.js`. The intro says **how many questions** there are, worked out from the list (currently 18), not how long it takes, and has no age statement. Results: q17 and q18 are listed
-under their own headings in the results page and downloads. The two new fields are declared in the hidden form in `index.html`; a test checks that every field the survey can send is declared there.
+The first thing a new respondent does is **try the real dashboard**. "Start with the demo" opens `/demo/`, which runs the Finance Sense app's own code in
+**demo-only mode** (`window.FD_DEMO_ONLY`, set by `demo/demo-config.js`; see `js/app.js` in the app): sample data only, no Settings tab, no "Use my numbers", nothing saved, and it never reads
+the app's saved data. A bar pinned to the top says the numbers are made up and has **Continue to the questions**, which returns to `/?demo=done`; the survey notes that the demo was seen (its own
+localStorage key, `fs-survey-v1-demo`), tidies the address and begins at question 1. People who are part-way through, or who already saw the demo, are not sent through it again; opening the survey as a plain file skips it
+(there is no demo page next to a double-clicked file). Because the demo can colour early answers a little, say so when you read the results.
+
+**The app code on the demo page is copied, not committed.** `node survey/scripts/sync-demo.mjs` (run from the repo root) copies the app's scripts and stylesheet into `survey/demo/app/` (git-ignored),
+and refuses to if `demo/index.html` does not list the same scripts as the app's `index.html` (without `version.js` and `update.js`). Run it before testing the demo or staging the survey.
+
+After question 14 come two optional text questions about the demo: **q17** (anything they did not like) and **q18** (anything they would like that it does not have), then "anything else" (q16) and the optional email (q15).
+The intro says **how many questions** there are, worked out from the list (currently 18), not how long it takes, and has no age statement. Results: q17 and q18 are listed
+under their own headings in the results page and downloads. The two fields are declared in the hidden form in `index.html`; a test checks that every field the survey can send is declared there.
 
 ## What gets published (and what does not)
 
-Stage exactly: `index.html`, `_headers`, `css/`, `js/`, `auth/gate.js`, `auth/gate.css`, `admin/` (3 files), `netlify.toml`, `package.json`, `package-lock.json`, `netlify/edge-functions/gate.ts`, `netlify/functions/` (login, session, logout, admin), `netlify/shared/` (auth, people, http, site), then stamp it: `node scripts/stamp-version.mjs <staging folder>` (see above). **Do not publish** `results/`, `tests/`, `README.md` or
+Stage exactly: `index.html`, `_headers`, `css/`, `js/`, `demo/` (the two committed files plus the generated `demo/app/`: stage from a `git archive` of the whole repo, run `node survey/scripts/sync-demo.mjs` in it, then copy the survey files; the app's code in `demo/app/` is stamped by nobody and has no update check), `auth/gate.js`, `auth/gate.css`, `admin/` (3 files), `netlify.toml`, `package.json`, `package-lock.json`, `netlify/edge-functions/gate.ts`, `netlify/functions/` (login, session, logout, admin), `netlify/shared/` (auth, people, http, site), then stamp it: `node scripts/stamp-version.mjs <staging folder>` (see above). **Do not publish** `results/`, `tests/`, `README.md` or
 this folder's other files: the results page is for your own computer, and the tests are for development.
 
 Nothing is published or deployed by working in this folder.

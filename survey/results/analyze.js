@@ -223,7 +223,7 @@
       qq.options.forEach(function (op) { o.push('- ' + mdText(op.label) + ': ' + op.count + ' (' + p0(op.pct) + ')'); });
     });
     o.push('', '## Early-version interest', '', '- Said yes: ' + stats.contact.tryYes + ', said no: ' + stats.contact.tryNo + '. Emails are in the separate "survey-contact" form.', '- OK to quote anonymously: ' + stats.contact.quote);
-    [['q12', 'The ONE thing they wish a dashboard would tell them'], ['q13', 'Missing features and ideas'], ['q14', 'Apps they loved or hated'], ['q17', 'What they did not like about the example screens'], ['q18', 'What they would like to see that is not there'], ['q16', 'Anything else they wanted to say'], ['q11_other', 'Other reasons they would stop using an app']].forEach(function (p) {
+    [['q12', 'The ONE thing they wish a dashboard would tell them'], ['q13', 'Missing features and ideas'], ['q14', 'Apps they loved or hated'], ['q17', 'What they did not like in the demo'], ['q18', 'What they would like to see that is not there'], ['q16', 'Anything else they wanted to say'], ['q11_other', 'Other reasons they would stop using an app']].forEach(function (p) {
       var t = stats.texts[p[0]]; o.push('', '## ' + p[1] + ' (' + t.length + ')', ''); t.forEach(function (x) { o.push('- ' + mdText(x)); });
     });
     return o.join('\n') + '\n';

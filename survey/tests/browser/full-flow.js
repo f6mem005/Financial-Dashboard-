@@ -5,6 +5,7 @@ const OUT = require('os').tmpdir() + '/';
 const URL = 'http://localhost:8771/index.html';
 (async () => {
   const b = await chromium.launch(); const errs = [];
+  { const nc = b.newContext.bind(b); b.newContext = async (o) => { const c = await nc(o); await c.addInitScript("try { localStorage.setItem('fs-survey-v1-demo', '1'); } catch (e) {}"); return c; }; }   // these tests start at the first question, so the demo counts as already seen (demo-flow.js covers the demo itself)
   const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, acceptDownloads: true });
   const p = await ctx.newPage();
   // The survey ignores navigation taps within 300ms of the previous one (double-tap protection), so scripted clicks pause briefly.
@@ -136,7 +137,7 @@ const URL = 'http://localhost:8771/index.html';
   await next();                                                                            // -> Q8
   await next(); await next();                                                              // Q9, Q10
   await p.locator('.choice').nth(1).click();                                               // weekly summary
-  await next(); await next(); await next(); await next(); await next(); await next();      // Q14, the example screens, Q17, Q18, Q16 -> Q15
+  await next(); await next(); await next(); await next(); await next();      // Q14, Q17, Q18, Q16 -> Q15
   out('last screen: Finish button, 18 of 18', /18 of 18/.test(await p.innerText('#app')) && await p.locator('.nav .primary:has-text("Finish")').count() === 1);
   await p.locator('.choice').first().click();                                              // yes
   await next(); out('"Yes" needs a valid email', /valid email/.test(await p.textContent('.error')));

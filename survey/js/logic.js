@@ -190,7 +190,6 @@
   function fieldNames(questions) {
     var names = ['response_id', 'bot-field'];
     questions.forEach(function (q) {
-      if (q.type === 'tour') return;   // example screens: nothing to send
       if (q.type === 'grid') q.items.forEach(function (i) { names.push(q.id + '_' + i.id); });
       else if (q.type === 'contact') { names.push(q.id + '_try'); names.push(q.id + '_quote'); }
       else { names.push(q.id); if (q.type === 'multi' && q.otherText) names.push(q.id + '_other'); }
@@ -225,11 +224,7 @@
       var src = questions.filter(function (x) { return x.id === q.from; })[0];
       return !!src && src.required;
     }).length;
-    // The example screens are not questions: they do not count in "n of N". A tour screen sits after the questions before it.
-    var tourIds = ids.filter(function (id) { var x = questions.filter(function (y) { return y.id === id; })[0]; return !!x && x.type === 'tour'; });
-    var qIds = ids.filter(function (id) { return tourIds.indexOf(id) < 0; });
-    var at = ids.indexOf(qid), index = tourIds.indexOf(qid) >= 0 ? ids.slice(0, at).filter(function (id) { return tourIds.indexOf(id) < 0; }).length - 1 : qIds.indexOf(qid);
-    return { index: index, total: qIds.length + pending, ids: ids };
+    return { index: ids.indexOf(qid), total: ids.length + pending, ids: ids };
   }
 
   SV.logic = { makeRng: makeRng, shuffle: shuffle, orderFor: orderFor, toggleSingle: toggleSingle, togglePick: togglePick,

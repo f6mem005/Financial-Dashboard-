@@ -6,6 +6,7 @@ const URL = process.env.BASE_URL || 'http://localhost:8771/index.html';
 let failed = 0; const out = (k, v) => { if (!v) failed++; console.log((v ? 'PASS ' : 'FAIL ') + k); };
 (async () => {
   const b = await chromium.launch();
+  { const nc = b.newContext.bind(b); b.newContext = async (o) => { const c = await nc(o); await c.addInitScript("try { localStorage.setItem('fs-survey-v1-demo', '1'); } catch (e) {}"); return c; }; }   // these tests start at the first question, so the demo counts as already seen (demo-flow.js covers the demo itself)
   async function open(o, session, delay) {
     const ctx = await b.newContext(Object.assign({ viewport: { width: 390, height: 844 } }, o || {})); const p = await ctx.newPage(); const errs = [], posts = [];
     p.on('pageerror', (e) => errs.push(e.message)); p.on('console', (m) => { if (['error', 'warning'].includes(m.type()) && !/\/auth\/(session|logout)/.test((m.location() || {}).url || '')) errs.push(m.text()); });

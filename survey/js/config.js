@@ -7,6 +7,7 @@
   var cfg = (SV.config = {
     showDownload: true,
     storageKey: 'fs-survey-v1',
+    demo: true,   // people try the real dashboard (on /demo/) before the first question
     // Shown on the first screen when set: who runs the survey, how long answers are kept, how to ask for deletion.
     privacyNote: "Run by Finance Sense. Your answers are not linked to your name: each response gets a random code, and the site host (Netlify) may record technical details such as the time, IP address and browser type with it. To sign in you use the name and passcode from your invitation; they are kept separately from your answers and are never attached to them. The site sets one cookie, only to remember that you signed in. If you leave an email to try an early version, it is stored separately from your answers and used only to invite you; emails are deleted once invitations have gone out, or within 90 days of the survey closing, whichever comes first. Answers are kept for 90 days after the survey closes, then deleted. To ask for your answers or email to be removed, write to manny0569@gmail.com and include the email address you gave, or quote a sentence you wrote so the answer can be found."
   });

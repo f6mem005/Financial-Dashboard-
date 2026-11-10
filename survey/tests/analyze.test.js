@@ -277,6 +277,6 @@ test('the two feedback questions (q17, q18) reach the report, in the respondents
   const csv = 'response_id,q12,q17,q18\nr1,a wish,the chart is confusing,a shared view\nr2,another wish,,more goals\n';
   const r = A.analyze(csv), md = A.toMarkdown(r.stats, r.info);
   assert.deepEqual(r.stats.texts.q17, ['the chart is confusing']); assert.deepEqual(r.stats.texts.q18.sort(), ['a shared view', 'more goals']);
-  assert.match(md, /What they did not like about the example screens \(1\)/); assert.match(md, /What they would like to see that is not there \(2\)/);
+  assert.match(md, /What they did not like in the demo \(1\)/); assert.match(md, /What they would like to see that is not there \(2\)/);
   assert.match(md, /the chart is confusing/);
 });

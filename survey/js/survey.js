@@ -49,6 +49,12 @@
   function clearSaved() { try { root.localStorage.removeItem(cfg.storageKey); } catch (e) { /* ignore */ } }
   function say(msg) { live.textContent = ''; setTimeout(function () { live.textContent = msg; }, 30); }
   function itemById(q, id) { return q.items.filter(function (i) { return i.id === id; })[0]; }
+  /* The demo: before the first question, people try the real dashboard (with made-up numbers) on /demo/. Its "Continue" bar comes back here with ?demo=done.
+     "Seen it" is remembered in its own key, so clearing or finishing the survey never sends someone through the demo twice. */
+  var DEMO_KEY = cfg.storageKey + '-demo', DEMO_PATH = 'demo/';
+  function demoSeen() { try { return root.localStorage.getItem(DEMO_KEY) === '1'; } catch (e) { return false; } }
+  function markDemoSeen() { try { root.localStorage.setItem(DEMO_KEY, '1'); } catch (e) { /* the survey still works; the demo is just offered again */ } }
+  function demoApplies() { return !!cfg.demo && root.location.protocol !== 'file:'; }   // a double-clicked file has no demo page next to it
   function hasAnswers() { return Object.keys(L.sanitizeAnswers(Q, state.answers)).length > 0; }
 
   /* ---------- small widgets ---------- */
@@ -253,38 +259,7 @@
     return wrap;
   }
 
-  /* ---------- the example screens (the guided tour) ---------- */
-  /* One example screen: a phone-shaped card of plain text with made-up numbers, and a line saying what it is for. Nothing in it is tappable. */
-  function slideNode(slide) {
-    var rows = slide.screen.map(function (l) {
-      if (l.k === 'big') return h('span', { class: 'tp-big' }, l.t);
-      if (l.k === 'label') return h('span', { class: 'tp-label' }, l.t);
-      if (l.k === 'note') return h('span', { class: 'tp-note' }, l.t);
-      if (l.k === 'row') return h('div', { class: 'tp-row' }, h('span', { class: 'tp-name' }, l.a), h('span', { class: 'tp-when' }, l.b), h('span', { class: 'tp-amt' }, l.c));
-      if (l.k === 'bar') return h('svg', { viewBox: '0 0 200 6', class: 'tp-track', width: 200, height: 6, 'aria-hidden': 'true' }, h('rect', { width: 200, height: 6, class: 'tp-track-bg' }), h('rect', { width: Math.round(l.pct * 2), height: 6, class: 'tp-track-fill' }));
-      if (l.k === 'spark') return h('svg', { viewBox: '0 0 200 50', class: 'tp-spark', width: 200, height: 50, 'aria-hidden': 'true' }, h('path', { d: l.d, class: 'tp-line', fill: 'none' }));
-      return null;
-    });
-    return h('div', { class: 'tour-slide' },
-      h('div', { class: 'tour-phone' }, h('span', { class: 'tp-brand' }, 'Finance Sense'), h('span', { class: 'tp-title' }, slide.title), rows),
-      h('p', { class: 'tour-caption' }, slide.caption));
-  }
-  function tourBody() {
-    var T = SV.tour || [], i = 0, prev, next, count = h('span', { class: 'tour-count', 'aria-live': 'polite' }), stage = h('div', { class: 'tour-stage' });
-    function draw() {
-      var had = doc.activeElement;   // a button about to be disabled (the last or first screen) must not drop a keyboard user's focus
-      stage.textContent = ''; stage.appendChild(slideNode(T[i]));
-      count.textContent = 'Example screen ' + (i + 1) + ' of ' + T.length + ': ' + T[i].title;   // read out on every change; the card itself is read on request, not every time
-      prev.disabled = i === 0; next.disabled = i === T.length - 1;
-      if (had && had.disabled) (had === next ? prev : next).focus({ preventScroll: true });
-    }
-    prev = btn('Previous screen', function () { if (i > 0) { i--; draw(); } }, 'ghost small');
-    next = btn('Next screen', function () { if (i < T.length - 1) { i++; draw(); } }, 'ghost small');
-    var box = h('div', { class: 'tour' }, stage, h('div', { class: 'tour-controls' }, prev, count, next));
-    draw(); return box;
-  }
-
-  var BODIES = { grid: gridBody, pick: pickBody, rank: rankBody, single: singleBody, multi: multiBody, text: textBody, contact: contactBody, tour: tourBody };
+  var BODIES = { grid: gridBody, pick: pickBody, rank: rankBody, single: singleBody, multi: multiBody, text: textBody, contact: contactBody };
 
   /* ---------- screens ---------- */
   function progress(q) {
@@ -292,7 +267,7 @@
     var fill = h('div', { class: 'bar-fill' });
     fill.style.width = Math.round(((pos.index + 1) / pos.total) * 100) + '%';
     return h('div', { class: 'progress' },
-      h('div', { class: 'progress-top' }, h('span', null, q.part), h('span', null, q.type === 'tour' ? 'Example screens' : (pos.index + 1) + ' of ' + pos.total)),
+      h('div', { class: 'progress-top' }, h('span', null, q.part), h('span', null, (pos.index + 1) + ' of ' + pos.total)),
       h('div', { class: 'bar', role: 'progressbar', 'aria-valuemin': 0, 'aria-valuemax': pos.total, 'aria-valuenow': pos.index + 1, 'aria-label': 'Survey progress' }, fill));
   }
 
@@ -340,22 +315,11 @@
   }
 
   function introScreen() {
-    var resuming = hasAnswers(), armed = false, armedAt = 0, peek = null, peekBtn = null;
-    var peekBox = h('div', { class: 'peek' });
-    function togglePeek() {   // an optional quick look at one example screen; the full set comes near the end
-      var open = !!peek;
-      peekBox.textContent = '';
-      if (!open && SV.tour && SV.tour[0]) { peek = slideNode(SV.tour[0]); peekBox.appendChild(peek); peekBox.appendChild(h('p', { class: 'fine' }, 'One of ' + SV.tour.length + ' example screens, with made-up numbers. You will see them all near the end of the survey.')); }
-      else peek = null;
-      peekBtn.textContent = peek ? 'Hide the quick look' : 'Take a quick look at the dashboard first (optional)';
-      peekBtn.setAttribute('aria-expanded', peek ? 'true' : 'false');
-    }
-    peekBtn = btn('Take a quick look at the dashboard first (optional)', togglePeek, 'ghost', { 'aria-expanded': 'false' });
+    var resuming = hasAnswers(), armed = false, armedAt = 0, goesToDemo = !resuming && demoApplies() && !demoSeen();
     return h('main', { class: 'screen intro', id: 'main' },
       h('h1', { tabindex: '-1', id: 'title' }, SV.intro.title),
       h('p', { class: 'help' }, SV.intro.lead),
       h('ul', { class: 'points panel' }, SV.intro.points.map(function (p) { return h('li', null, p); })),
-      SV.tour && SV.tour.length ? h('div', { class: 'stack' }, peekBtn, peekBox) : null,
       cfg.privacyNote ? h('section', { class: 'privacy' }, h('h2', null, 'Your privacy'), h('p', { class: 'fine' }, cfg.privacyNote)) : null,
       resuming ? h('div', { class: 'stack' },
         btn('Start over', function (e) {
@@ -369,7 +333,8 @@
           clearSaved(); state = fresh(); state.started = true; state.qid = Q[0].id; save(); render(true);
         }, 'ghost')) : null,
       // the main button is pinned to the bottom of the screen (like Next on the questions) so it is always in reach
-      h('div', { class: 'nav solo' }, btn(resuming ? 'Continue where I left off' : 'Start', function () {
+      h('div', { class: 'nav solo' }, btn(resuming ? 'Continue where I left off' : goesToDemo ? 'Start with the demo' : 'Start', function () {
+        if (goesToDemo) { root.location.assign(DEMO_PATH); return; }
         state.started = true; var ids = L.visibleIds(Q, state.answers);
         state.qid = ids.indexOf(state.qid) >= 0 ? state.qid : ids[0]; save(); render(true);
       }, 'primary big')));
@@ -454,6 +419,16 @@
     if (e.storageArea !== root.localStorage || (e.key !== cfg.storageKey && e.key !== null) || e.newValue !== null || state.done || state.sending) return;
     state = fresh(); render(true); say('This survey was changed in another window, so this page was reset.'); // otherwise typing here would re-save the finished answers
   });
+
+  /* Back from the demo: remember it was seen, tidy the address, and begin at the first question. */
+  (function () {
+    var back = false;
+    try { back = new root.URLSearchParams(root.location.search).get('demo') === 'done'; } catch (e) { /* no address to read */ }
+    if (!back) return;
+    markDemoSeen();
+    try { root.history.replaceState(null, '', root.location.pathname); } catch (e) { /* cosmetic only */ }
+    if (!state.started && !state.done) { state.started = true; var ids = L.visibleIds(Q, state.answers); state.qid = ids.indexOf(state.qid) >= 0 ? state.qid : ids[0]; save(); }
+  })();
 
   SV.busy = function () { return !!state.sending; };   // Sign out is disabled while the answers are being sent
   if (SV.session) SV.session.load();   // who is signed in, so the banner can show Sign out

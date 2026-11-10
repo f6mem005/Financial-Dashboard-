@@ -21,7 +21,7 @@
     { id: 'invest', label: 'Learning material about investing', desc: 'general education only, no specific recommendations' }
   ];
 
-  var P1 = 'What would you want to see?', P2 = 'How you would use it', P3 = 'Style and habits', P4 = 'In your own words', P5 = 'Stay in touch', PT = 'A look at the dashboard';
+  var P1 = 'What would you want to see?', P2 = 'How you would use it', P3 = 'Style and habits', P4 = 'In your own words', P5 = 'Stay in touch';
 
   var QUESTIONS = [
     { id: 'q1', part: P1, type: 'grid', required: true, shuffle: true, items: FEATURES, scale: 5, scaleLow: 'Not important', scaleHigh: 'Essential', unsure: true,
@@ -78,15 +78,11 @@
 
     { id: 'q14', part: P4, type: 'text', required: false, max: 2000,
       title: 'Have you used a money or budgeting app you loved or hated? What made it good or bad?', help: 'Optional.' },
-    // The example screens (a guided tour: pictures with example numbers, nothing real). It holds no answer and does not count as a question.
-    { id: 'demo', part: PT, type: 'tour', required: false,
-      title: 'Here is what the dashboard looks like',
-      help: 'These are example screens with made-up numbers. Page through them, then tell us what you think on the next two screens.' },
     { id: 'q17', part: P4, type: 'text', required: false, max: 2000,
-      title: 'Is there anything you do not like about what you just saw?',
+      title: 'Is there anything you did not like in the demo?',
       help: 'Optional. Be as blunt as you like: the layout, a number, a word, anything.' },
     { id: 'q18', part: P4, type: 'text', required: false, max: 2000,
-      title: 'Is there anything you would like to see that is not there?',
+      title: 'Is there anything you would like to see that the demo did not have?',
       help: 'Optional. A feature, a screen, or something you do with your money that this does not cover.' },
     { id: 'q16', part: P4, type: 'text', required: false, max: 2000,
       title: "Anything else you'd like to tell us?",
@@ -97,26 +93,7 @@
       help: 'Optional. Your email is used only to contact you about this, and is never shared.' }
   ];
 
-  /* The example screens for the tour. k: label | big | note | row (a, b, c) | bar (pct) | spark (d). All numbers are made up. */
-  SV.tour = [
-    { id: 'home', title: 'Home', caption: 'What is safe to spend until payday, and which bills are coming.',
-      screen: [{ k: 'label', t: 'Safe to spend until payday' }, { k: 'big', t: '$412' }, { k: 'bar', pct: 62 }, { k: 'note', t: '6 days to go. Bills already set aside.' },
-        { k: 'label', t: 'Coming up' }, { k: 'row', a: 'Rent', b: 'Fri', c: '$900' }, { k: 'row', a: 'Phone', b: 'Mon', c: '$45' }, { k: 'row', a: 'Streaming', b: 'Wed', c: '$12' }] },
-    { id: 'forecast', title: 'Forecast', caption: 'Where your balance is heading, and when it could run low.',
-      screen: [{ k: 'label', t: 'Your balance over the next 3 months' }, { k: 'spark', d: 'M0 14 L25 18 L50 12 L75 30 L100 36 L125 28 L150 20 L175 16 L200 10' },
-        { k: 'note', t: 'Heads up: it dips below your $200 minimum around Dec 14.' }, { k: 'label', t: 'What if' }, { k: 'row', a: 'Cut eating out by $50 a month', b: '', c: '+$150' }] },
-    { id: 'plan', title: 'Plan', caption: 'Your bills, your spending limits and your debt in one place.',
-      screen: [{ k: 'label', t: 'Fixed bills' }, { k: 'row', a: 'Rent', b: '', c: '$900' }, { k: 'row', a: 'Phone', b: '', c: '$45' }, { k: 'row', a: 'Internet', b: '', c: '$60' },
-        { k: 'label', t: 'Left over this month' }, { k: 'big', t: '$380' }, { k: 'note', t: 'After bills, spending and your debt payment.' }] },
-    { id: 'ideas', title: 'Ideas', caption: 'How much you could set aside, and what saving it could grow into. General education only, not advice.',
-      screen: [{ k: 'label', t: 'You could set aside about' }, { k: 'big', t: '$140 a month' }, { k: 'row', a: 'First, a cushion', b: '', c: '$1,000' }, { k: 'row', a: 'Then, something for later', b: '', c: '' },
-        { k: 'note', t: 'Illustration: $140 a month for 10 years could grow to roughly $17,000 to $24,000. An example, not a promise.' }] },
-    { id: 'spend', title: 'Ideas: spend less', caption: 'Places to cut back, and charges that look doubled up.',
-      screen: [{ k: 'label', t: 'Subscriptions cost' }, { k: 'big', t: '$1,020 a year' }, { k: 'note', t: 'About $85 a month. Worth a look for ones you rarely use.' },
-        { k: 'label', t: 'These look like the same bill' }, { k: 'row', a: 'Streaming', b: 'Nov 3', c: '$12' }, { k: 'row', a: 'Streaming', b: 'Nov 4', c: '$12' }] }
-  ];
-
-  var QUESTION_COUNT = QUESTIONS.filter(function (q) { return q.type !== 'tour'; }).length;   // the example screens are not questions
+  var QUESTION_COUNT = QUESTIONS.length;
   SV.questions = QUESTIONS;
   SV.features = FEATURES;
   /* the banner shown above every screen, and who the survey came from (shown on the first screen) */
@@ -125,7 +102,7 @@
     title: 'Help design an easy-to-understand money dashboard',
     lead: "We're building a tool to help you see your money clearly, without needing to be a budgeting expert. Before we build more, we want to hear what you would actually use.",
     points: [
-      'There are ' + QUESTION_COUNT + ' questions.',
+      'There are ' + QUESTION_COUNT + ' questions. First you try a short demo of the dashboard, with made-up numbers.',
       'There are no right or wrong answers. Honest answers, including "I would not use that," help us most.',
       'We will not ask for bank details, account numbers, or how much you earn or spend.',
       'Your answers are anonymous. If you choose to leave an email at the very end, it is kept separately from your answers.',

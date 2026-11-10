@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'; require-trusted-types-for 'script'; trusted-types 'none'">
+  <meta name="referrer" content="same-origin">
+  <meta name="color-scheme" content="light dark">
+  <meta name="robots" content="noindex">
+  <title>Finance Sense demo</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="app/css/styles.css">
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <!-- If the demo cannot start (a script fails to load, or the app files were not staged), the app never replaces this link, so nobody is stuck. -->
+  <div id="app"><p><a href="/?demo=done">Continue to the questions</a></p></div>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <noscript><p class="noscript">The demo needs JavaScript. <a href="/?demo=done">Continue to the questions</a></p></noscript>
+  <!-- The app's own code, copied here by scripts/sync-demo.mjs. demo-config.js must come first: it switches the app into demo-only mode.
+       This list must match the app's index.html (without version.js and update.js); a test checks that. -->
+  <script src="demo-config.js"></script>
+  <script src="app/js/util.js"></script>
+  <script src="app/js/catalog.js"></script>
+  <script src="app/js/config.js"></script>
+  <script src="app/js/engine.js"></script>
+  <script src="app/js/store.js"></script>
+  <script src="app/js/ideas.js"></script>
+  <script src="app/js/backup.js"></script>
+  <script src="app/js/sample.js"></script>
+  <script src="app/js/csv.js"></script>
+  <script src="app/js/charts.js"></script>
+  <script src="app/js/ui.js"></script>
+  <script src="app/js/install.js"></script>
+  <script src="app/js/session.js"></script>
+  <script src="app/js/transfer.js"></script>
+  <script src="app/js/onboarding.js"></script>
+  <script src="app/js/views.js"></script>
+  <script src="app/js/ideas-view.js"></script>
+  <script src="app/js/app.js"></script>
+</body>
+</html>

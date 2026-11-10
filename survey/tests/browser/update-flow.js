@@ -7,6 +7,7 @@ const URL = process.env.BASE_URL || 'http://localhost:8771/index.html';
 let failed = 0; const out = (k, v) => { if (!v) failed++; console.log((v ? 'PASS ' : 'FAIL ') + k); };
 (async () => {
   const b = await chromium.launch(); const errs = [];
+  { const nc = b.newContext.bind(b); b.newContext = async (o) => { const c = await nc(o); await c.addInitScript("try { localStorage.setItem('fs-survey-v1-demo', '1'); } catch (e) {}"); return c; }; }   // these tests start at the first question, so the demo counts as already seen (demo-flow.js covers the demo itself)
   const ctx = await b.newContext({ viewport: { width: 390, height: 800 } }); const p = await ctx.newPage();
   p.on('pageerror', (e) => errs.push('pageerror ' + e.message)); p.on('console', (m) => { if (['error', 'warning'].includes(m.type()) && !/40[14]|50[03]/.test(m.text())) errs.push(m.text()); });
   let live = { status: 200, body: '{"build":"20261106100000-aaaaaaa"}' }, asked = 0;
