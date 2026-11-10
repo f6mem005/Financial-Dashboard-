@@ -2,7 +2,7 @@
   "id": "/",
   "name": "Finance Sense",
   "short_name": "Finance Sense",
-  "description": "A simple money dashboard that makes managing your money clearer and easier.",
+  "description": "An easy-to-understand money dashboard that makes managing your money clearer and easier.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

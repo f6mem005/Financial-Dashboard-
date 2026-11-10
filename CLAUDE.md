@@ -1,6 +1,6 @@
 # Finance Sense: instructions for Claude
 
-Personal finance and budgeting dashboard for young adults (18-30) with little budgeting experience. Static site
+Personal finance and budgeting dashboard for people with little budgeting experience. Static site
 (`index.html`, `css/`, `js/`), no build step, no account, no backend. Data lives in the visitor's browser
 (`localStorage`). See `README.md` for the layout and the list of what is stubbed or simplified.
 

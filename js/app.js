@@ -139,8 +139,10 @@
     return h('footer', { class: 'disclaimer' }, 'Finance Sense is for education and organizing, not financial advice. It doesn’t recommend specific investments or products. Forecasts are estimates based on what you enter.');
   }
 
+  var QN = FD.catalog.QUESTIONS.length;   // how many questions setup asks, so the text never goes out of date
+
   var STEPS = [
-    ['Answer a few questions', 'About 13 quick ones, around 3 minutes: what you earn, your bills, what you owe, what you want. The money questions need an answer, even if it is $0 or N/A, so nothing is guessed for you.'],
+    ['Answer the questions', QN + ' questions about what you earn, your bills, what you owe and what you want. The money questions need an answer, even if it is $0 or N/A, so nothing is guessed for you.'],
     ['See where you stand', 'Home shows how much is safe to spend until payday, which bills are coming, and where your balance is heading over the next months.'],
     ['Get ideas', 'The Ideas tab works out how much you could set aside, shows what saving or investing it could grow into, points out places to spend less, and flags charges that look doubled up.'],
     ['Keep it current', 'Log what you spend or import a CSV from your bank. When your pay, bills or plans change, we notice and offer to update, or you can change any answer in a tap.'],
@@ -157,7 +159,7 @@
   function logo() { return UI.logo(48); }
 
   // Three plain facts shown under the intro (text only: nothing here is a button or a card).
-  var FACTS = [['About 3 min', 'to set up'], ['No account', 'or bank link'], ['On device', 'nothing uploaded']];
+  var FACTS = [[QN + ' questions', 'to set up'], ['No account', 'or bank link'], ['On device', 'nothing uploaded']];
 
   /* A picture of the dashboard with example numbers. It is decoration only: hidden from screen readers, no buttons or links inside it,
      and the caption says the numbers are an example. It must never look or behave like something you can tap. */
@@ -205,8 +207,8 @@
       FD.session.slot('hero'),   // Sign out, top right, where it can be seen without scrolling
       h('div', { class: 'brand-row' }, logo(), h('div', { class: 'brand-text' }, h('span', { class: 'brand-name' }, 'Finance Sense'), h('span', { class: 'brand-tag' }, 'Your money, made simple'))),
       h('h1', { class: 'landing-title', tabindex: '-1', id: 'q-title' }, inApp ? 'How Finance Sense works' : 'Know where your money is going'),
-      h('p', { class: 'landing-intro' }, 'Finance Sense is a simple money dashboard that makes managing your money clearer and easier. Answer a few quick questions and it shows what is safe to spend until payday, which bills are coming and where your balance is heading, then suggests how much you could set aside. No account, no bank connection, and your numbers stay on this device.'),
-      !inApp ? h('p', { class: 'landing-note' }, resuming ? 'Your earlier answers are saved. You can change any of them.' : 'Takes about 3 minutes. Nothing to enter? Choose $0 or N/A.') : null,
+      h('p', { class: 'landing-intro' }, 'Finance Sense is an easy-to-understand money dashboard that makes managing your money clearer and easier. Answer ' + QN + ' questions and it shows what is safe to spend until payday, which bills are coming and where your balance is heading, then suggests how much you could set aside. No account, no bank connection, and your numbers stay on this device.'),
+      !inApp ? h('p', { class: 'landing-note' }, resuming ? 'Your earlier answers are saved. You can change any of them.' : QN + ' questions. Nothing to enter? Choose $0 or N/A.') : null,
       !inApp ? h('ul', { class: 'landing-stats' }, FACTS.map(function (f) { return h('li', null, h('strong', null, f[0]), h('span', null, f[1])); })) : null,
       h('div', { class: 'landing-links' },
         !inApp ? link('Look at a demo first', function () { app.startDemo(); }) : null,

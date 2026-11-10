@@ -23,7 +23,7 @@ const done = { v: 1, mode: 'real', onboarded: true, answers: { payFreq: 'biweekl
   const look = await p.evaluate(() => { const li = document.querySelector('.benefit'), cs = getComputedStyle(li); return { border: cs.borderTopWidth, shadow: cs.boxShadow, bg: cs.backgroundColor, cursor: cs.cursor }; });
   out('landing: list items have no border, shadow, fill or pointer cursor (nothing implies a click)', look.border === '0px' && look.shadow === 'none' && look.bg === 'rgba(0, 0, 0, 0)' && look.cursor !== 'pointer');
   out('landing: exactly one Get started button, none of the list or facts are buttons', (await p.locator('button:has-text("Get started")').count()) === 1 && (await p.locator('.benefits button, .benefits a, .landing-stats button, .landing-stats a').count()) === 0);
-  out('landing: key facts are plain text', (await p.locator('.landing-stats li').count()) === 3 && /About 3 min/.test(await p.innerText('.landing-stats')));
+  out('landing: key facts are plain text', (await p.locator('.landing-stats li').count()) === 3 && /13 questions/.test(await p.innerText('.landing-stats')));
   out('landing: the phone preview is hidden from screen readers and holds nothing interactive', (await p.getAttribute('.phone', 'aria-hidden')) === 'true' && (await p.locator('.phone button, .phone a, .phone input, .phone [tabindex], .phone [onclick]').count()) === 0);
   out('landing: the phone ignores the pointer and the caption says the numbers are an example', (await p.evaluate(() => getComputedStyle(document.querySelector('.phone')).pointerEvents)) === 'none' && /example numbers/i.test(await p.innerText('.landing-caption')));
   await p.evaluate(() => document.querySelector('.phone').scrollIntoView({ block: 'center' })); await p.waitForTimeout(150);

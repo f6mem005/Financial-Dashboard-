@@ -1,6 +1,6 @@
 # Finance Sense
 
-A simple personal finance dashboard for young adults (18–30) with little budgeting experience.
+An easy-to-understand personal finance dashboard for people with little budgeting experience.
 Static, no build step. Your numbers stay in the browser (`localStorage`) and are never sent anywhere. The site itself sits behind a sign-in (see below), which is the only part that uses a server (Netlify Functions and Netlify Blobs).
 
 ## Run
