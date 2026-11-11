@@ -62,11 +62,34 @@
       h('path', { d: 'M7 21 L13 14 L18 18 L25 9', class: 'logo-line' }),
       h('path', { d: 'M20 9 L25 9 L25 14', class: 'logo-line' }));
   }
+  /* A small button in the top bar that steps Match my device -> Light -> Dark. It shows the current one. The top bar is already full on a phone (name, How it works, Sign out),
+     so here it only appears from 600px up (CSS); on a phone the choice is the first card on Settings, and a button on the first screen. */
+  var THEME_NAMES = { auto: 'Match my device', light: 'Light', dark: 'Dark' }, THEME_NEXT = { auto: 'light', light: 'dark', dark: 'auto' };
+  var THEME_ICON = {   // sun = Light, moon = Dark, half-filled circle = Match my device
+    light: [['circle', { cx: 12, cy: 12, r: 4 }], ['path', { d: 'M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4' }]],
+    dark: [['path', { d: 'M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z' }]],
+    auto: [['circle', { cx: 12, cy: 12, r: 9 }], ['path', { d: 'M12 3a9 9 0 0 1 0 18z', class: 'solid' }]]
+  };
+  function themeButton() {
+    if (!FD.theme) return null;
+    var btnEl = h('button', { type: 'button', class: 'theme-btn' });
+    function draw() {
+      var m = FD.theme.get();
+      btnEl.textContent = '';
+      btnEl.setAttribute('aria-label', 'Appearance: ' + THEME_NAMES[m] + '. Tap to change.');
+      btnEl.appendChild(h('svg', { viewBox: '0 0 24 24', class: 'theme-ic', 'aria-hidden': 'true', fill: 'none' }, THEME_ICON[m].map(function (e) { return h(e[0], e[1]); })));
+    }
+    btnEl.addEventListener('click', function () { var next = THEME_NEXT[FD.theme.get()]; FD.theme.set(next); toast('Appearance: ' + THEME_NAMES[next]); });
+    draw();
+    FD.theme.subscribe(btnEl, draw);
+    return btnEl;
+  }
+
   function banner(actions, onHome) {   // onHome: the logo and name become a Home button (so there is always a way back, even if the tab bar is out of sight)
     var brand = h('span', { class: 'brand-row' }, logo(30), h('span', { class: 'brand' }, 'Finance Sense'));
     return h('header', { class: 'topbar site-banner' },
       onHome ? h('button', { type: 'button', class: 'brand-btn', onclick: onHome, 'aria-label': 'Finance Sense. Go to Home' }, brand) : brand,
-      h('div', { class: 'banner-actions' }, actions || null, FD.session ? FD.session.slot('bar') : null));   // Sign out shows here for anyone who is signed in
+      h('div', { class: 'banner-actions' }, actions || null, onHome && !(root.FD_DEMO_ONLY) ? themeButton() : null, FD.session ? FD.session.slot('bar') : null));   // Sign out shows here for anyone who is signed in
   }
 
   /* Appearance: Match my device / Light / Dark (js/theme.js applies and remembers it). The card redraws only itself, and keeps keyboard focus on the chip pressed. */
@@ -85,9 +108,10 @@
       if (focusEl) focusEl.focus({ preventScroll: true });
     }
     draw();
+    FD.theme.subscribe(box, function () { if (!box.contains(root.document.activeElement)) draw(); });   // the top-bar button changed it: redraw, unless a chip here is being used (it redraws itself)
     return card('Appearance', box);
   }
 
-  FD.ui = { themeCard: themeCard, logo: logo, banner: banner, btn: btn, card: card, tile: tile, moneyInput: moneyInput, field: field, select: select, chip: chip, toast: toast };
+  FD.ui = { themeCard: themeCard, themeButton: themeButton, logo: logo, banner: banner, btn: btn, card: card, tile: tile, moneyInput: moneyInput, field: field, select: select, chip: chip, toast: toast };
   if (typeof module !== 'undefined' && module.exports) module.exports = FD;
 })(typeof window !== 'undefined' ? window : globalThis);

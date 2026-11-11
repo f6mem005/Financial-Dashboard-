@@ -477,6 +477,8 @@
     var out = h('main', { class: 'screen', id: 'main' }, h('h1', { class: 'page-title', tabindex: '-1', id: 'q-title' }, 'Settings'));
     if (S.mode === 'demo') out.appendChild(h('p', { class: 'note' }, 'You’re looking at sample data. Changes here aren’t saved.'));
 
+    var look = UI.themeCard(); if (look) out.appendChild(look);   // first, so it is easy to find
+
     // money basics
     var bal = null, minv = null, sav; // sav: undefined = untouched, null = cleared
     out.appendChild(UI.card('Money basics', h('div', { class: 'stack' },
@@ -500,8 +502,6 @@
     }))));
 
     if (cfg.assumed.length) out.appendChild(UI.card('Estimates in use', h('ul', null, cfg.assumed.map(function (a) { return h('li', null, a); }))));
-
-    var look = UI.themeCard(); if (look) out.appendChild(look);
 
     // moving to another device
     out.appendChild(FD.session.slot('card'));

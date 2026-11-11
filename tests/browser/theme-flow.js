@@ -44,6 +44,51 @@ const LIGHT = 'rgb(246, 246, 243)', DARK = 'rgb(18, 18, 17)';   // --bg in each 
   out('Match my device removes the choice (no attribute, nothing stored, the two top-bar colours are back to the page defaults)', (await attr(p)) === null && (await ls(p, 'fd.theme')) === null && JSON.stringify(await bars(p)) === JSON.stringify(['#1d4f9f', '#0f2a55']));
   await p.ctx.close();
 
+  // ---- a button in the top bar (and on the first screen) so the choice is never hard to find
+  p = await open('light');
+  out('the first screen has an Appearance button in its blue header', (await p.locator('.landing-hero .theme-btn').count()) === 1);
+  await p.click('.landing-hero .theme-btn'); await p.waitForTimeout(100);
+  out('...tapping it goes to Light (explicit), then Dark, then back to Match my device', (await attr(p)) === 'light' && /Light/.test(await p.getAttribute('.landing-hero .theme-btn', 'aria-label')));
+  await p.click('.landing-hero .theme-btn'); await p.waitForTimeout(100);
+  out('...Dark: dark page, stored, label says Dark', (await bg(p)) === DARK && (await ls(p, 'fd.theme')) === 'dark' && /Dark/.test(await p.getAttribute('.landing-hero .theme-btn', 'aria-label')));
+  out('...and the Appearance card on the same screen follows (Dark pressed)', (await pressed(p, 'Dark')) === 'true');
+  await p.click('.landing-hero .theme-btn'); await p.waitForTimeout(100);
+  out('...the third tap is Match my device again', (await attr(p)) === null && (await ls(p, 'fd.theme')) === null && /Match my device/.test(await p.getAttribute('.landing-hero .theme-btn', 'aria-label')));
+  await p.setViewportSize({ width: 900, height: 800 });
+  await p.click('button:has-text("Look at a demo first")'); await p.waitForSelector('.tabs');
+  out('inside the app, on a wide screen, the top bar has the button too, on every tab', (await p.locator('.site-banner .theme-btn').count()) === 1 && (await p.evaluate(() => ['forecast', 'plan', 'ideas', 'activity', 'settings'].every((t) => { FD.app.go(t); return document.querySelectorAll('.site-banner .theme-btn').length === 1; }))));
+  await p.click('.tab:has-text("Settings")'); await p.waitForSelector('[aria-label="Appearance"]');
+  await p.click('.site-banner .theme-btn'); await p.waitForTimeout(150);
+  out('the top-bar button and the Settings card stay in step', (await pressed(p, 'Light')) === 'true' && (await pressed(p, 'Match my device')) === 'false');
+  await p.click('button.chip:text-is("Dark")'); await p.waitForTimeout(150);
+  out('...and the button follows the card', /Dark/.test(await p.getAttribute('.site-banner .theme-btn', 'aria-label')));
+  const top = await p.evaluate(() => Math.round(document.querySelector('[aria-label="Appearance"]').getBoundingClientRect().top + scrollY));
+  out('Appearance is the first card on Settings (' + top + 'px down the page, not buried)', top < 520 && (await p.evaluate(() => document.querySelector('main .card h2').textContent)) === 'Appearance');
+  await p.ctx.close();
+  // a finished, real (not demo) setup, which is what most people have
+  p = await open('light', "try { localStorage.setItem('fd.v1', JSON.stringify({ v: 1, mode: 'real', onboarded: true, answers: {}, settings: {}, transactions: [] })); } catch (e) {}");
+  await p.waitForSelector('.tabs'); out('a real, finished setup on a phone: no top-bar button (the bar is full), so the choice is the first card on Settings instead', (await p.locator('.site-banner .theme-btn:visible').count()) === 0);
+  await p.click('.tab:has-text("Settings")'); await p.waitForSelector('[aria-label="Appearance"]');
+  out('...and the Appearance card near the top of its Settings', (await p.evaluate(() => Math.round(document.querySelector('[aria-label="Appearance"]').getBoundingClientRect().top + scrollY))) < 400);
+  await p.click('button.chip:text-is("Dark")'); await p.waitForTimeout(100);
+  out('...and choosing Dark there works', (await bg(p)) === DARK);
+  await p.ctx.close();
+  // nothing piles up as screens are redrawn: a change only ever reaches elements that are on the page right now (there is no list of old screens to leak or to redraw)
+  p = await open('light'); await p.click('button:has-text("Look at a demo first")'); await p.waitForSelector('.tabs');
+  const reach = await p.evaluate(() => {
+    for (let i = 0; i < 60; i++) FD.app.go(i % 2 ? 'home' : 'settings');
+    let gone = 0, here = 0, thrower = 0;
+    const old = document.createElement('div'); FD.theme.subscribe(old, () => { gone++; });                                  // an element that is not on the page (an old screen)
+    const live = document.createElement('div'); document.body.appendChild(live); FD.theme.subscribe(live, () => { here++; });   // one that is
+    const bad = document.createElement('div'); document.body.appendChild(bad); FD.theme.subscribe(bad, () => { thrower++; throw new Error('boom'); });
+    FD.theme.set('dark'); FD.theme.set('auto');
+    live.remove(); bad.remove(); FD.theme.set('dark'); FD.theme.set('auto');
+    return { gone, here, thrower, bg: getComputedStyle(document.body).backgroundColor };
+  });
+  out('a change reaches elements on the page (twice), never an element that is not (old screens), and a view that throws cannot break the switch', reach.here === 2 && reach.gone === 0 && reach.thrower === 2 && reach.bg === LIGHT);
+  out('...and after 60 redraws the switch and the buttons still work', await p.evaluate(() => { FD.theme.set('dark'); const d = getComputedStyle(document.body).backgroundColor; FD.theme.set('auto'); return d === 'rgb(18, 18, 17)'; }));
+  await p.ctx.close();
+
   // ---- the choice beats the device, both ways
   p = await open('dark', "try { localStorage.setItem('fd.theme', 'light'); } catch (e) {}");
   out('Light chosen on a dark device stays light', (await bg(p)) === LIGHT && (await attr(p)) === 'light');

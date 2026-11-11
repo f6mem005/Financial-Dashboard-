@@ -28,11 +28,20 @@
   function set(mode) {
     apply(mode);
     try { if (current === 'auto') root.localStorage.removeItem(KEY); else root.localStorage.setItem(KEY, current); } catch (e) { /* not saved, but it still applies to this visit */ }
+    notify();
     return current;
   }
   function get() { return current; }
+  // The Appearance card and the top-bar button both show the choice. There is no list of listeners to leak: each such element marks itself with the class
+  // theme-sub and carries its own redraw function, and a change simply asks the elements that are on the page right now. A screen that was redrawn away is
+  // garbage the moment it leaves the page.
+  function subscribe(node, fn) { node._themeFn = fn; node.classList.add('theme-sub'); }
+  function notify() {
+    if (!doc || !doc.querySelectorAll) return;
+    Array.prototype.forEach.call(doc.querySelectorAll('.theme-sub'), function (el) { try { if (el._themeFn) el._themeFn(current); } catch (e) { /* one view failing must never break the switch */ } });
+  }
 
   apply(read());
-  FD.theme = { get: get, set: set, MODES: MODES.slice() };
+  FD.theme = { get: get, set: set, subscribe: subscribe, MODES: MODES.slice() };
   if (typeof module !== 'undefined' && module.exports) module.exports = FD;
 })(typeof window !== 'undefined' ? window : globalThis);

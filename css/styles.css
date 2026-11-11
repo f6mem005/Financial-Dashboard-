@@ -403,3 +403,9 @@ html { scroll-padding-bottom: 7rem; }   /* a focused control is never left under
 .key-name { flex: 1; min-width: 0; overflow-wrap: anywhere; } .key-val { font-weight: 700; font-variant-numeric: tabular-nums; }
 .key-caption { margin: 0; font-size: .85rem; font-weight: 700; color: var(--text-2); }
 .series-key-box { display: flex; flex-direction: column; gap: 6px; }
+
+/* the top-bar Appearance button */
+.theme-btn { flex: none; width: 44px; height: 44px; padding: 0; border: 1px solid var(--line); background: var(--surface); color: var(--text); border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
+.theme-ic { width: 22px; height: 22px; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; } .theme-ic .solid { fill: currentColor; }
+@media (max-width: 599px) { .site-banner .theme-btn { display: none; } }   /* the phone top bar has no room: see ui.js */
+.landing-hero .brand-row .theme-btn { margin-left: auto; background: transparent; color: #ffffff; border-color: rgba(255, 255, 255, .65); }

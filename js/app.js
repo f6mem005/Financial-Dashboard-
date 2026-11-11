@@ -222,7 +222,7 @@
         UI.btn('Delete the unreadable data and any copies', function () { if (root.confirm('Delete the unreadable data and its backup copies? This can’t be undone.')) app.wipe(); }, 'small danger')) : null;
     var hero = h('header', { class: 'landing-hero' }, h('div', { class: 'landing-in' },
       FD.session.slot('hero'),   // Sign out, top right, where it can be seen without scrolling
-      h('div', { class: 'brand-row' }, logo(), h('div', { class: 'brand-text' }, h('span', { class: 'brand-name' }, 'Finance Sense'), h('span', { class: 'brand-tag' }, 'Your money, made simple'))),
+      h('div', { class: 'brand-row' }, logo(), h('div', { class: 'brand-text' }, h('span', { class: 'brand-name' }, 'Finance Sense'), h('span', { class: 'brand-tag' }, 'Your money, made simple')), UI.themeButton && !DEMO_ONLY ? UI.themeButton() : null),
       h('h1', { class: 'landing-title', tabindex: '-1', id: 'q-title' }, inApp ? 'How Finance Sense works' : 'Know where your money is going'),
       h('p', { class: 'landing-intro' }, 'Finance Sense is an easy-to-understand money dashboard that makes managing your money clearer and easier. Answer ' + QN + ' questions and it shows what is safe to spend until payday, which bills are coming and where your balance is heading, then suggests how much you could set aside. No account, no bank connection, and your numbers stay on this device.'),
       !inApp ? h('p', { class: 'landing-note' }, resuming ? 'Your earlier answers are saved. You can change any of them.' : QN + ' questions. Nothing to enter? Choose $0 or N/A.') : null,
