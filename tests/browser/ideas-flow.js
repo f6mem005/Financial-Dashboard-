@@ -78,13 +78,39 @@ const out = (k, v) => { if (!v) failed++; console.log((v ? 'PASS ' : 'FAIL ') + 
   out('changing the monthly amount updates the result', /Putting in \$500 a month/.test(await txt()));
   await p.selectOption('select[aria-label="How long"]', '30');
   out('changing the length updates the result', /for 30 years/.test(await txt()));
-  await p.click('.chip:has-text("Broad stock index fund")');
-  out('picking another fund updates the chart label', (await p.locator('.chart-wrap').last().getAttribute('aria-label')).includes('Broad stock index fund'));
-  await p.locator('.chart-wrap').last().focus(); await p.keyboard.press('ArrowRight'); await p.keyboard.press('ArrowRight');
-  out('chart is readable by keyboard (year, middle, cautious, hopeful)', /Year 2: about \$[\d,]+ \(cautious \$[\d,]+, hopeful \$[\d,]+\)/.test(await p.locator('.tip').last().innerText()));
+  // one chart with all four options
+  const ml = p.locator('.ml-chart');
+  out('ONE chart shows all four options: four lines, four end dots and a legend of four', (await ml.count()) === 1 && (await ml.locator('polyline.ml-line').count()) === 4 && (await ml.locator('svg circle.ml-dot:visible').count()) === 4 && (await ml.locator('.series-key li').count()) === 4);
+  out('...and there is no longer one chart per chosen fund', (await p.locator('.linechart').count()) === 1);
+  out('each line has its own dash pattern, so no two are told apart by colour alone (four different patterns, one of them solid)', await p.evaluate(() => { const d = [...document.querySelectorAll('.ml-line')].map((l) => getComputedStyle(l).strokeDasharray); return new Set(d).size === 4 && d.filter((x) => x === 'none').length === 1; }));
+  out('...and the legend swatches are drawn in the same four patterns', await p.evaluate(() => { const d = [...document.querySelectorAll('.series-key .sw')].map((x) => getComputedStyle(x).backgroundImage); return d.length === 4 && new Set(d).size === 4; }));
+  const legend = await ml.locator('.series-key').innerText();
+  out('the legend names every option with where it ends, highest first', /Broad stock index fund[^]*Mixed fund[^]*Bond index fund[^]*Savings account/.test(legend) && (legend.match(/\$[\d,]+/g) || []).length === 4);
+  const vals = (legend.match(/\$[\d,]+/g) || []).map((x) => +x.replace(/[$,]/g, ''));
+  out('...and the legend order is by value', vals.every((v, i) => i === 0 || vals[i - 1] >= v));
+  out('the chart label describes all four options for screen readers', /Savings account about[^]*Bond index fund about[^]*Mixed fund about[^]*Broad stock index fund about/.test(await ml.locator('.chart-wrap').getAttribute('aria-label')));
+  out('by default the Mixed fund range is shaded, and its chip is pressed', (await ml.locator('polygon.ml-band').count()) === 1 && (await p.locator('button.chip:text-is("Mixed fund")').getAttribute('aria-pressed')) === 'true');
+  await p.click('button.chip:text-is("Broad stock index fund")');
+  out('choosing another option moves the shaded range to it (still one band, still four lines)', (await ml.locator('polygon.ml-band.ml-s4').count()) === 1 && (await ml.locator('polygon.ml-band').count()) === 1 && (await ml.locator('polyline.ml-line').count()) === 4);
+  await p.click('button.chip:text-is("Broad stock index fund")');
+  out('choosing it again hides the range', (await ml.locator('polygon.ml-band').count()) === 0);
+  const endBox = await p.locator('.series-key-box').innerText();
+  await p.locator('.chart-wrap').last().focus(); await p.keyboard.press('ArrowLeft');
+  out('the first Left arrow moves from the end of the chart (30 years) to 29, not to Now', /After 29 years/.test(await p.locator('.series-key-box').innerText()));
+  out('keyboard reads are announced (aria-live polite); pointer reads are not (off)', (await p.locator('.series-key-box').getAttribute('aria-live')) === 'polite');
+  await p.keyboard.press('Escape');
+  await p.locator('.chart-wrap').last().focus(); await p.keyboard.press('Shift+ArrowLeft');
+  const tip = await p.locator('.series-key-box').innerText();
+  out('chart is readable by keyboard: the legend switches to that year, with all four amounts', /After 25 years/.test(tip) && (tip.match(/\$[\d,]+/g) || []).length === 4 && /Savings account/.test(tip) && /Broad stock index fund/.test(tip) && tip !== endBox && /After 30 years/.test(endBox));
+  out('reading a point puts a marker on every line, and nothing floats over the lines', (await ml.locator('svg circle.ml-dot:visible').count()) === 8 && (await p.locator('.tip').count()) === 0);
+  await p.keyboard.press('Escape');
+  out('Escape goes back to the end-of-chart amounts', (await p.locator('.series-key-box').innerText()) === endBox);
   await p.click('summary:has-text("Change the growth assumptions")');
   await p.fill('input[aria-label="Broad stock index fund middle yearly growth percent"]', '2');
-  out('editing an assumed rate changes the table', /Assumed yearly growth after inflation and fees: [\d.-]+% cautious, 2% middle/.test(await txt()));
+  out('editing an assumed rate changes the chart and legend', /Middle yearly growth after inflation and fees:[^]*Broad stock index fund 2%/.test(await txt()));
+  await p.fill('input[aria-label="Broad stock index fund middle yearly growth percent"]', '-20');
+  out('an extreme rate still draws (no broken chart)', (await p.locator('.ml-chart polyline.ml-line').count()) === 4 && (await p.evaluate(() => [...document.querySelectorAll('.ml-line')].every((l) => !/NaN|Infinity/.test(l.getAttribute('points'))))));
+  await p.click('button:has-text("Reset to the defaults")');
 
   // small phones: nothing may push the page sideways
   await p.setViewportSize({ width: 360, height: 800 });

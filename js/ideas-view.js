@@ -134,22 +134,30 @@
         function fit() { if (tableBox.scrollWidth > tableBox.clientWidth + 1) tableBox.setAttribute('tabindex', '0'); else tableBox.removeAttribute('tabindex'); }
         fit(); if (root.ResizeObserver) { try { new root.ResizeObserver(fit).observe(tableBox); } catch (e) { /* fit() above is enough */ } }
       })();
-      result.appendChild(h('div', { class: 'seg', role: 'group', 'aria-label': 'Choose what to chart' }, proj.map(function (r) {
-        var label = r.name.replace(/ \(.*\)$/, '');
+      // one chart with every option (the middle case), so they can be compared at a glance; the chips only choose whose cautious-to-hopeful range is shaded
+      function pts(s) { return s.map(function (x) { return { year: x.year, balance: x.value }; }); }
+      function shortName(r) { return r.name.replace(/ \(.*\)$/, ''); }
+      var step = st.years <= 10 ? 1 : 5, sel = proj.filter(function (r) { return r.id === st.pick; })[0] || null;
+      var lines = proj.map(function (r, i) { return { id: r.id, name: shortName(r), cls: 's' + (i + 1), pts: pts(r.mid) }; });
+      var summary = lines.map(function (l) { return l.name + ' about ' + money(l.pts[l.pts.length - 1].balance); }).join('; ');
+      var reach = Math.max.apply(null, proj.map(function (r) { return r.high[r.high.length - 1].value; }));   // so choosing a different range never rescales the chart
+      result.appendChild(CH.multiLine({ series: lines, value: money, reach: reach,
+        band: sel ? { id: sel.id, cls: lines[proj.indexOf(sel)].cls, low: pts(sel.low), high: pts(sel.high) } : null,
+        label: 'Possible growth of each option over ' + st.years + ' years, middle case, in today’s money. After ' + st.years + ' years: ' + summary + '.',
+        xLabel: function (q) { return q.year === 0 ? 'Now' : q.year % step === 0 ? 'Yr ' + q.year : null; },
+        tipTitle: function (i) { return i === 0 ? 'Now' : 'After ' + i + (i === 1 ? ' year' : ' years'); } }));
+      result.appendChild(h('p', { class: 'q-help' }, 'Each line is the middle case. Tap a name below to shade its range from cautious to hopeful.'));
+      result.appendChild(h('div', { class: 'seg', role: 'group', 'aria-label': 'Shade the cautious-to-hopeful range for' }, proj.map(function (r) {
+        var label = shortName(r);
         return UI.chip(label, st.pick === r.id, function () {
-          st.pick = r.id; draw();
+          st.pick = st.pick === r.id ? null : r.id; draw();
           var again = Array.prototype.filter.call(result.querySelectorAll('button.chip'), function (b) { return b.textContent === label; })[0];
           if (again) again.focus({ preventScroll: true });   // draw() rebuilt the chips; keep keyboard focus where it was
         });
       })));
-      var sel = proj.filter(function (r) { return r.id === st.pick; })[0] || proj[0];
-      function pts(s) { return s.map(function (x) { return { year: x.year, balance: x.value }; }); }
-      var lo = pts(sel.low), mid = pts(sel.mid), hi = pts(sel.high), step = st.years <= 10 ? 1 : 5;
-      result.appendChild(CH.lineChart({ points: mid, low: lo, high: hi, min: 0, noDanger: true, label: sel.name + ': possible growth over ' + st.years + ' years',
-        xLabel: function (q) { return q.year === 0 ? 'Now' : q.year % step === 0 ? 'Yr ' + q.year : null; },
-        tipLabel: function (q, i) { return 'Year ' + q.year + ': about ' + money(q.balance) + ' (cautious ' + money(lo[i].balance) + ', hopeful ' + money(hi[i].balance) + ')'; } }));
-      result.appendChild(h('p', { class: 'chart-key' }, h('span', { class: 'key-line ok' }), ' Middle  ', h('span', { class: 'key-band' }), ' Range from cautious to hopeful'));
-      result.appendChild(h('p', { class: 'hint' }, sel.blurb + ' Assumed yearly growth after inflation and fees: ' + sel.rates.low + '% cautious, ' + sel.rates.mid + '% middle, ' + sel.rates.high + '% hopeful.'));
+      result.appendChild(sel
+        ? h('p', { class: 'hint' }, sel.blurb + ' The shaded area is ' + sel.rates.low + '% to ' + sel.rates.high + '% a year (middle ' + sel.rates.mid + '%), after inflation and fees.')
+        : h('p', { class: 'hint' }, 'Middle yearly growth after inflation and fees: ' + proj.map(function (r) { return shortName(r) + ' ' + r.rates.mid + '%'; }).join(', ') + '.'));
     }
 
     var years = UI.select([[5, '5 years'], [10, '10 years'], [20, '20 years'], [30, '30 years']], st.years, function (v) { st.years = U.num(v, 10, 1, 60); draw(); }, 'How long');

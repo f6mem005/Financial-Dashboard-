@@ -146,15 +146,104 @@
     return wrap;
   }
 
+  /* ---------- several lines in one chart (e.g. the growth of every fund type) ----------
+     opts: series [{ name, cls ('s1'..'s4': colour AND line style, see the CSS), pts: [{ year, balance }] }], band { cls, low: pts, high: pts } (optional range
+     around one series), reach (the largest amount that could be shown, so the scale does not jump when the band changes), xLabel(p, i), tipTitle(i) (the
+     caption for a year), label (the chart's text description), value(v) (how a number is written).
+     Identity never rests on colour alone: each line also has its own dash pattern, an end dot, and a legend (HTML text, ordered by where the lines end)
+     with the end value; reading a year switches that legend to the year's amounts (there is no floating tooltip to cover the lines). */
+  function multiLine(opts) {
+    var series = opts.series, W = 640, H = 400, L = 66, R = 24, T = 14, B = 40, band = opts.band || null;
+    var all = [0];
+    if (opts.reach > 0 && isFinite(opts.reach)) all.push(opts.reach);
+    series.forEach(function (s) { s.pts.forEach(function (p) { all.push(p.balance); }); });
+    if (band) { band.high.forEach(function (p) { all.push(p.balance); }); band.low.forEach(function (p) { all.push(p.balance); }); }
+    var lo = Math.min.apply(null, all), hi = Math.max.apply(null, all);
+    if (hi <= lo) hi = lo + 100;
+    hi += (hi - lo) * 0.06;
+    var n = series[0].pts.length - 1 || 1;
+    function X(i) { return L + (W - L - R) * i / n; }
+    function Y(v) { return T + (H - T - B) * (1 - (v - lo) / (hi - lo)); }
+    var money = opts.value || U.money;
+
+    var svg = h('svg', { viewBox: '0 0 ' + W + ' ' + H, class: 'linechart multi', role: 'img', 'aria-label': opts.label || 'Growth of each option over time' });
+    var step = niceStep((hi - lo) / 4), t0 = Math.ceil(lo / step) * step;
+    for (var v = t0; v <= hi; v += step) {
+      svg.appendChild(h('line', { x1: L, x2: W - R, y1: Y(v), y2: Y(v), class: 'grid' }));
+      svg.appendChild(h('text', { x: L - 6, y: Y(v) + 4, 'text-anchor': 'end', class: 'axis' }, shortMoney(v)));
+    }
+    var lastLabelX = -99;
+    series[0].pts.forEach(function (p, i) {
+      var lab = opts.xLabel ? opts.xLabel(p, i) : null;
+      if (lab === null || lab === undefined) return;
+      var x = X(i);
+      if (x - lastLabelX < 60) return;
+      lastLabelX = x;
+      svg.appendChild(h('text', { x: x, y: H - 10, 'text-anchor': i === 0 ? 'start' : 'middle', class: 'axis' }, lab));
+    });
+    svg.appendChild(h('line', { x1: L, x2: W - R, y1: Y(0), y2: Y(0), class: 'zeroline' }));
+    if (band) {
+      var up = band.high.map(function (p, i) { return X(i) + ',' + Y(p.balance); });
+      var down = band.low.map(function (p, i) { return X(i) + ',' + Y(p.balance); }).reverse();
+      svg.appendChild(h('polygon', { points: up.concat(down).join(' '), class: 'ml-band ml-' + band.cls }));
+    }
+    series.forEach(function (s) {
+      svg.appendChild(h('polyline', { points: s.pts.map(function (p, i) { return X(i) + ',' + Y(p.balance); }).join(' '), class: 'ml-line ml-' + s.cls, fill: 'none' }));
+    });
+    series.forEach(function (s) {   // the end dot on every line (a 2px ring in the surface colour keeps neighbouring dots apart)
+      var last = s.pts[s.pts.length - 1];
+      svg.appendChild(h('circle', { cx: X(s.pts.length - 1), cy: Y(last.balance), r: 4.5, class: 'ml-dot ml-' + s.cls }));
+    });
+
+    var cross = h('line', { class: 'cross', y1: T, y2: H - B, x1: 0, x2: 0 });
+    cross.style.display = 'none';
+    var dots = series.map(function (s) { var d = h('circle', { cx: 0, cy: 0, r: 5, class: 'ml-dot ml-' + s.cls }); d.style.display = 'none'; return d; });
+    svg.appendChild(cross); dots.forEach(function (d) { svg.appendChild(d); });
+    // Reading a point never covers the lines: the legend below the chart switches to that year's amounts instead of a floating box.
+    var wrap = h('div', { class: 'chart-wrap', tabindex: '0', role: 'group', 'aria-label': (opts.label || 'Growth of each option') + '. Use left and right arrow keys to read the amounts for each year.' }, svg);
+    var last = series[0].pts.length - 1, cur = -1;
+    var caption = h('p', { class: 'key-caption' });
+    var rows = ordered(last).map(function (s) {
+      var val = h('span', { class: 'key-val' });
+      return { s: s, val: val, li: h('li', null, h('span', { class: 'sw ml-' + s.cls, 'aria-hidden': 'true' }), h('span', { class: 'key-name' }, s.name), val) };
+    });
+    function ordered(i) { return series.slice().sort(function (a, b) { return b.pts[i].balance - a.pts[i].balance; }); }
+    function fill(i) { caption.textContent = opts.tipTitle ? opts.tipTitle(i) : String(i); rows.forEach(function (r) { r.val.textContent = money(r.s.pts[i].balance); }); }
+    function show(i) {
+      if (!isFinite(i)) return;
+      i = Math.max(0, Math.min(n, i)); if (i === cur) return;   // the same year again (a pointer moving a few pixels): nothing to redraw or announce
+      cur = i;
+      var x = X(i);
+      cross.setAttribute('x1', x); cross.setAttribute('x2', x); cross.style.display = '';
+      series.forEach(function (s, k) { dots[k].setAttribute('cx', x); dots[k].setAttribute('cy', Y(s.pts[i].balance)); dots[k].style.display = ''; });
+      fill(i);
+    }
+    function hide() { cross.style.display = 'none'; dots.forEach(function (d) { d.style.display = 'none'; }); cur = -1; fill(last); }
+    function fromEvent(e) { var rect = svg.getBoundingClientRect(); show(Math.round(((e.clientX - rect.left) / rect.width * W - L) / (W - L - R) * n)); }
+    function pointer(e) { box.setAttribute('aria-live', 'off'); fromEvent(e); }   // a moving pointer is not announced; arrow keys are
+    wrap.addEventListener('pointermove', pointer);
+    wrap.addEventListener('pointerdown', pointer);
+    wrap.addEventListener('pointerleave', function (e) { if (e.pointerType === 'mouse') hide(); });
+    wrap.addEventListener('keydown', function (e) {
+      var at = cur < 0 ? last : cur;   // the legend starts at the end of the chart, so the first arrow press moves from there
+      if (e.key === 'ArrowRight') { box.setAttribute('aria-live', 'polite'); show(at + (e.shiftKey ? 5 : 1)); e.preventDefault(); }
+      else if (e.key === 'ArrowLeft') { box.setAttribute('aria-live', 'polite'); show(at - (e.shiftKey ? 5 : 1)); e.preventDefault(); }
+      else if (e.key === 'Escape') hide();
+    });
+    fill(last);
+    var box = h('div', { class: 'series-key-box', role: 'status', 'aria-live': 'off', 'aria-atomic': 'true' }, caption, h('ul', { class: 'series-key', 'aria-label': 'Which line is which, with the amount for the year shown' }, rows.map(function (r) { return r.li; })));
+    return h('div', { class: 'ml-chart' }, wrap, box);
+  }
+
   function niceStep(raw) {
     var p = Math.pow(10, Math.floor(Math.log(raw) / Math.LN10)), f = raw / p;
     return (f < 1.5 ? 1 : f < 3.5 ? 2 : f < 7.5 ? 5 : 10) * p;
   }
   function shortMoney(v) {
-    var a = Math.abs(v), s = a >= 1000 ? (Math.round(a / 100) / 10) + 'k' : String(Math.round(a));
+    var a = Math.abs(v), s = a >= 1e9 ? (Math.round(a / 1e8) / 10) + 'B' : a >= 1e6 ? (Math.round(a / 1e5) / 10) + 'M' : a >= 1000 ? (Math.round(a / 100) / 10) + 'k' : String(Math.round(a));
     return (v < 0 ? '-$' : '$') + s;
   }
 
-  FD.charts = { donut: donut, bar: bar, lineChart: lineChart, shortMoney: shortMoney };
+  FD.charts = { donut: donut, bar: bar, lineChart: lineChart, multiLine: multiLine, shortMoney: shortMoney };
   if (typeof module !== 'undefined' && module.exports) module.exports = FD;
 })(typeof window !== 'undefined' ? window : globalThis);

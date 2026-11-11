@@ -64,10 +64,11 @@ const probe = () => {
     if (names.length < 2 || names.some((x) => x < 60)) bads.push('bill names are squeezed (widths ' + JSON.stringify(names) + ')');
     await ctx.close(); ctx = await b.newContext(phone); await mockSession(ctx); p = await ctx.newPage(); await p.goto(URL); await p.click('button:has-text("Look at a demo first")'); await p.evaluate(() => window.FD.app.go('ideas')); await p.waitForTimeout(300);
     await p.locator('.chart-wrap').first().focus();
-    for (const [key, times] of [['ArrowRight', 1], ['Shift+ArrowRight', 40], ['Shift+ArrowLeft', 80]]) {   // first point, far right end, far left end
+    for (const [key, times, caption] of [['ArrowLeft', 1, 'After 9 years'], ['Shift+ArrowRight', 40, 'After 10 years'], ['Shift+ArrowLeft', 80, 'Now']]) {   // one step in from the end, back to the far right end, far left end
       for (let i = 0; i < times; i++) await p.keyboard.press(key); await p.waitForTimeout(100);
-      const tip = await p.evaluate(() => { const t = document.querySelector('.tip'); if (!t || getComputedStyle(t).display === 'none') return null; const r = t.getBoundingClientRect(), c = t.parentNode.getBoundingClientRect(); return { l: r.left - c.left, rr: c.right - r.right, onScreen: r.left >= 0 && r.right <= document.documentElement.clientWidth }; });
-      if (!tip || tip.l < 0 || tip.rr < 0 || !tip.onScreen) bads.push('chart tip (' + key + '): ' + JSON.stringify(tip));
+      // the growth chart has no floating tip any more: reading a point rewrites the legend under it, which must stay on screen and not spill
+      const tip = await p.evaluate(() => { const t = document.querySelector('.series-key-box'); if (!t) return null; const r = t.getBoundingClientRect(); return { caption: t.querySelector('.key-caption').textContent, l: r.left, rr: document.documentElement.clientWidth - r.right, onScreen: r.left >= 0 && r.right <= document.documentElement.clientWidth, spill: [...t.querySelectorAll('li')].some((li) => li.scrollWidth > li.clientWidth + 1), rows: t.querySelectorAll('li').length }; });
+      if (!tip || tip.caption !== caption || tip.l < 0 || tip.rr < 0 || !tip.onScreen || tip.spill || tip.rows !== 4) bads.push('chart legend (' + key + '): ' + JSON.stringify(tip));
     }
     await ctx.close();
     out(w + 'px: no screen is wider than the phone, and no text spills out of its box' + (bads.length ? '  <-- ' + bads.slice(0, 3).join(' | ') : ''), bads.length === 0);
