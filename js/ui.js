@@ -69,6 +69,25 @@
       h('div', { class: 'banner-actions' }, actions || null, FD.session ? FD.session.slot('bar') : null));   // Sign out shows here for anyone who is signed in
   }
 
-  FD.ui = { logo: logo, banner: banner, btn: btn, card: card, tile: tile, moneyInput: moneyInput, field: field, select: select, chip: chip, toast: toast };
+  /* Appearance: Match my device / Light / Dark (js/theme.js applies and remembers it). The card redraws only itself, and keeps keyboard focus on the chip pressed. */
+  function themeCard() {
+    if (!FD.theme) return null;
+    var box = h('div', { class: 'stack' });
+    function draw(focusLabel) {
+      var cur = FD.theme.get(), focusEl = null;
+      box.textContent = '';
+      box.appendChild(h('p', { class: 'q-help' }, 'Choose how Finance Sense looks. \u201cMatch my device\u201d follows your phone or computer\u2019s light or dark setting. This choice stays on this device and is separate from your numbers.'));
+      box.appendChild(h('div', { class: 'seg', role: 'group', 'aria-label': 'Appearance' }, [['auto', 'Match my device'], ['light', 'Light'], ['dark', 'Dark']].map(function (m) {
+        var c = chip(m[1], cur === m[0], function () { FD.theme.set(m[0]); draw(m[1]); });
+        if (m[1] === focusLabel) focusEl = c;
+        return c;
+      })));
+      if (focusEl) focusEl.focus({ preventScroll: true });
+    }
+    draw();
+    return card('Appearance', box);
+  }
+
+  FD.ui = { themeCard: themeCard, logo: logo, banner: banner, btn: btn, card: card, tile: tile, moneyInput: moneyInput, field: field, select: select, chip: chip, toast: toast };
   if (typeof module !== 'undefined' && module.exports) module.exports = FD;
 })(typeof window !== 'undefined' ? window : globalThis);

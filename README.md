@@ -133,6 +133,7 @@ passcodes and secrets live only in Netlify).
 | `js/csv.js` | Bank CSV parser/mapper with size and row limits |
 | `js/version.js`, `js/update.js`, `scripts/stamp-version.mjs` | The "new version, please refresh" bar and the deploy-time build stamp |
 | `js/charts.js`, `js/ui.js`, `js/onboarding.js`, `js/views.js`, `js/ideas-view.js`, `js/transfer.js`, `js/install.js`, `js/app.js` | UI. All DOM is built with a text-only builder (no `innerHTML`). `app.js` also holds the first screen and the How it works screen, opened from a button in the top bar of every screen |
+| `js/theme.js` | Appearance: Match my device / Light / Dark. Loaded in `<head>`; sets `data-theme` on `<html>`; the choice is one word under its own key `fd.theme` (not part of the saved data or a backup, and "Delete all my data" leaves it) |
 | `js/sample.js` | Demo persona (relative to today, never saved) |
 
 ## Stubbed or simplified in v1

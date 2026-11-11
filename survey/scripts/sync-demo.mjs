@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const survey = path.resolve(here, '..'), root = path.resolve(survey, '..');
-const EXCLUDE = new Set(['js/version.js', 'js/update.js']);
+const EXCLUDE = new Set(['js/version.js', 'js/update.js', 'js/theme.js']);   // no update check, and the demo has no Appearance choice (it follows the device)
 const scriptsOf = (html, prefix) => [...html.matchAll(/<script src="([^"]+)"><\/script>/g)].map((m) => m[1]).filter((s) => s.startsWith(prefix));
 
 const appIndex = fs.readFileSync(path.join(root, 'index.html'), 'utf8');

@@ -33,7 +33,7 @@ GitHub, so a push does not deploy. If that ever changes, a push could publish, s
 - Unit tests: `node --test tests/*.test.js tests/*.test.mjs` (engine, config mapping, CSV, store, ideas, backup, sign-in gate; pass
   explicit globs, a bare directory fails). Every fix to forecast, safe-to-spend, bill, goal, debt, suggestion or backup logic needs a
   regression test.
-- Browser tests: `tests/browser/gate-flow.js` (starts its own harness), `tests/browser/demo-only-flow.js` and `tests/browser/ideas-flow.js` (needs Playwright and the repo served on port 8912; see the top of the file).
+- Browser tests: `tests/browser/gate-flow.js` (starts its own harness), `tests/browser/demo-only-flow.js`, `tests/browser/theme-flow.js` and `tests/browser/ideas-flow.js` (needs Playwright and the repo served on port 8912; see the top of the file).
 - In the browser: serve the repo root (`python3 -m http.server`) and drive it with the preinstalled Chromium and
   Playwright. Check phone-sized and desktop screens, light and dark mode, the demo, and a real onboarding run
   (including skipping every question).
@@ -68,6 +68,7 @@ GitHub, so a push does not deploy. If that ever changes, a push could publish, s
 - Pop-ups: today the only pop-ups are the browser's own confirm boxes, which already block the page behind them. If a custom pop-up, sheet or menu is ever added, it must lock the page behind it
   (`overflow: hidden` on `html` while open, `overscroll-behavior: contain` on the pop-up's own scroller), keep keyboard focus inside, close on Escape, restore focus when it closes,
   and have a browser test (touch-emulated) proving that scrolling moves the pop-up and not the page behind it.
+- Appearance (Match my device / Light / Dark): `js/theme.js` (loaded in `<head>` so nothing flashes) sets `data-theme` on `<html>`; the choice is one word under its own key `fd.theme`, never inside `fd.v1`, a backup or "Delete all my data". Dark tokens live in two places in `css/styles.css` (the device-is-dark media query, guarded with `:not([data-theme="light"])`, and `:root[data-theme="dark"]`): change both together, and new dark-only rules need both selectors too. `tests/browser/theme-flow.js` covers it.
 - Never put secrets, tokens or API keys in the repo.
 
 ## Deploying: stamp the build

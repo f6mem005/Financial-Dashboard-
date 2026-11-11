@@ -243,6 +243,7 @@
       })),
       h('div', { class: 'card' }, h('h2', null, 'What it isn’t'),
         h('p', { class: 'q-help' }, 'It is not financial advice. It doesn’t connect to your bank, and it doesn’t recommend specific investments or products. Forecasts and growth illustrations are estimates built from what you enter, not promises.')),
+      !inApp && !DEMO_ONLY ? UI.themeCard() : null,
       !inApp && !resuming ? h('details', { class: 'restore' }, h('summary', null, 'Already use Finance Sense on another device? Restore from a backup'), FD.transfer.restoreCard(app)) : null,
       !inApp && resuming ? h('details', { class: 'restore' }, h('summary', null, 'Restore from a backup instead'), FD.transfer.restoreCard(app)) : null,
       disclaimer());

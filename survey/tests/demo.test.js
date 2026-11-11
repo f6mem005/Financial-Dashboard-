@@ -7,7 +7,7 @@ const scripts = (html) => [...html.matchAll(/<script src="([^"]+)"><\/script>/g)
 
 test('demo page: runs exactly the app\'s scripts (without the update check), after demo-config.js, with nothing inline', () => {
   const demo = read(survey, 'demo', 'index.html'), app = read(repo, 'index.html');
-  const want = scripts(app).filter((s) => !['js/version.js', 'js/update.js'].includes(s)).map((s) => 'app/' + s);
+  const want = scripts(app).filter((s) => !['js/version.js', 'js/update.js', 'js/theme.js'].includes(s)).map((s) => 'app/' + s);
   assert.deepEqual(scripts(demo), ['demo-config.js', ...want]);
   assert.equal(scripts(demo).indexOf('demo-config.js'), 0, 'the setting must be in place before the app starts');
   assert.doesNotMatch(demo, /<script(?![^>]*\bsrc=)/i, 'no inline script'); assert.doesNotMatch(demo, /\son[a-z]+\s*=|javascript:/i, 'no inline handlers');

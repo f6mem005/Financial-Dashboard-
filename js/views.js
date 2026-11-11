@@ -501,6 +501,8 @@
 
     if (cfg.assumed.length) out.appendChild(UI.card('Estimates in use', h('ul', null, cfg.assumed.map(function (a) { return h('li', null, a); }))));
 
+    var look = UI.themeCard(); if (look) out.appendChild(look);
+
     // moving to another device
     out.appendChild(FD.session.slot('card'));
     out.appendChild(FD.install.card(app));
@@ -515,7 +517,7 @@
     }, 'ghost'));
     if (S.mode === 'demo') dataBody.appendChild(UI.btn('Use my own numbers', function () { app.startReal(); }, 'primary'));
     else dataBody.appendChild(UI.btn('Delete all my data', function () {
-      if (root.confirm('Delete everything stored in this browser? This can\u2019t be undone.')) app.wipe();
+      if (root.confirm('Delete all your numbers and saved data from this browser? This can\u2019t be undone. (Your Light or Dark choice stays.)')) app.wipe();
     }, 'danger'));
     out.appendChild(UI.card('Your data', dataBody));
     return out;
