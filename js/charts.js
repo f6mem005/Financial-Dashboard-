@@ -179,7 +179,7 @@
       var x = X(i);
       if (x - lastLabelX < 60) return;
       lastLabelX = x;
-      svg.appendChild(h('text', { x: x, y: H - 10, 'text-anchor': i === 0 ? 'start' : 'middle', class: 'axis' }, lab));
+      svg.appendChild(h('text', { x: x, y: H - 10, 'text-anchor': i === 0 ? 'start' : i === series[0].pts.length - 1 ? 'end' : 'middle', class: 'axis' }, lab));
     });
     svg.appendChild(h('line', { x1: L, x2: W - R, y1: Y(0), y2: Y(0), class: 'zeroline' }));
     if (band) {
@@ -220,19 +220,21 @@
     }
     function hide() { cross.style.display = 'none'; dots.forEach(function (d) { d.style.display = 'none'; }); cur = -1; fill(last); }
     function fromEvent(e) { var rect = svg.getBoundingClientRect(); show(Math.round(((e.clientX - rect.left) / rect.width * W - L) / (W - L - R) * n)); }
-    function pointer(e) { box.setAttribute('aria-live', 'off'); fromEvent(e); }   // a moving pointer is not announced; arrow keys are
-    wrap.addEventListener('pointermove', pointer);
-    wrap.addEventListener('pointerdown', pointer);
+    // Only arrow-key reads are announced, through a separate hidden live region (a moving pointer would flood a screen reader, and switching aria-live on and off is not reliable).
+    var announce = h('p', { class: 'sr-only', role: 'status', 'aria-live': 'polite' });
+    function say(i) { announce.textContent = caption.textContent + ': ' + ordered(last).map(function (s) { return s.name + ' ' + money(s.pts[i].balance); }).join(', '); }
+    wrap.addEventListener('pointermove', fromEvent);
+    wrap.addEventListener('pointerdown', fromEvent);
     wrap.addEventListener('pointerleave', function (e) { if (e.pointerType === 'mouse') hide(); });
     wrap.addEventListener('keydown', function (e) {
       var at = cur < 0 ? last : cur;   // the legend starts at the end of the chart, so the first arrow press moves from there
-      if (e.key === 'ArrowRight') { box.setAttribute('aria-live', 'polite'); show(at + (e.shiftKey ? 5 : 1)); e.preventDefault(); }
-      else if (e.key === 'ArrowLeft') { box.setAttribute('aria-live', 'polite'); show(at - (e.shiftKey ? 5 : 1)); e.preventDefault(); }
+      if (e.key === 'ArrowRight') { show(at + (e.shiftKey ? 5 : 1)); say(cur); e.preventDefault(); }
+      else if (e.key === 'ArrowLeft') { show(at - (e.shiftKey ? 5 : 1)); say(cur); e.preventDefault(); }
       else if (e.key === 'Escape') hide();
     });
     fill(last);
-    var box = h('div', { class: 'series-key-box', role: 'status', 'aria-live': 'off', 'aria-atomic': 'true' }, caption, h('ul', { class: 'series-key', 'aria-label': 'Which line is which, with the amount for the year shown' }, rows.map(function (r) { return r.li; })));
-    return h('div', { class: 'ml-chart' }, wrap, box);
+    var box = h('div', { class: 'series-key-box' }, caption, h('ul', { class: 'series-key', 'aria-label': 'Which line is which, with the amount for the year shown' }, rows.map(function (r) { return r.li; })));
+    return h('div', { class: 'ml-chart' }, wrap, box, announce);
   }
 
   function niceStep(raw) {

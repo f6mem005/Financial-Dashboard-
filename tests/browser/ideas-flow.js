@@ -97,7 +97,13 @@ const out = (k, v) => { if (!v) failed++; console.log((v ? 'PASS ' : 'FAIL ') + 
   const endBox = await p.locator('.series-key-box').innerText();
   await p.locator('.chart-wrap').last().focus(); await p.keyboard.press('ArrowLeft');
   out('the first Left arrow moves from the end of the chart (30 years) to 29, not to Now', /After 29 years/.test(await p.locator('.series-key-box').innerText()));
-  out('keyboard reads are announced (aria-live polite); pointer reads are not (off)', (await p.locator('.series-key-box').getAttribute('aria-live')) === 'polite');
+  out('keyboard reads are announced in a separate hidden live region, with the year and all four amounts', /After 29 years: .*Broad stock index fund \$[\d,]+.*Savings account \$[\d,]+/.test(await ml.locator('p.sr-only[aria-live="polite"]').textContent()) && (await ml.locator('.series-key-box[aria-live]').count()) === 0);
+  const boxEl = ml.locator('.chart-wrap'), bb = await boxEl.boundingBox();
+  await p.mouse.move(bb.x + bb.width * 0.3, bb.y + bb.height * 0.5); await p.mouse.move(bb.x + bb.width * 0.35, bb.y + bb.height * 0.5);
+  const said = await ml.locator('p.sr-only').textContent();
+  await p.mouse.move(bb.x + bb.width * 0.6, bb.y + bb.height * 0.5); await p.mouse.move(2, 2);
+  out('moving or leaving with the mouse never changes what is announced', (await ml.locator('p.sr-only').textContent()) === said);
+  out('the last axis label ("Yr 30") is anchored to the end so it is never cut off', await p.evaluate(() => { const t = [...document.querySelectorAll('.linechart.multi text.axis')].pop(); return t.getAttribute('text-anchor') === 'end' && t.getBBox().x + t.getBBox().width <= 640.5; }));
   await p.keyboard.press('Escape');
   await p.locator('.chart-wrap').last().focus(); await p.keyboard.press('Shift+ArrowLeft');
   const tip = await p.locator('.series-key-box').innerText();
